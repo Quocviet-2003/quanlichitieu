@@ -21,6 +21,9 @@ const VALID_TYPES = ['THU', 'CHI'];
 
 // Kiểm tra & chuẩn hoá các trường giao dịch trong body
 // partial=true: chỉ lấy những trường người dùng có gửi lên (dùng cho PUT)
+
+//BA kiem tra du lieu giao dich
+
 function parseTxFields(body, { partial = false } = {}) {
   const data = {};
 
@@ -62,26 +65,26 @@ function parseCoords(body) {
   return { latitude: lat, longitude: lng };
 }
 
-// GET /api/transactions
+// GET /api/transactions , LAY GD DUNG VS USER
 exports.getTransactions = asyncHandler(async (req, res) => {
   const where = { userId: req.userId };
 
   // Bộ lọc tuỳ chọn
   if (req.query.type) {
     assert(VALID_TYPES.includes(req.query.type), 400, "Tham số 'type' chỉ nhận 'THU' hoặc 'CHI'.");
-    where.type = req.query.type;
+    where.type = req.query.type; // LỌC LOẠI/
   }
   if (req.query.category) {
-    where.category = String(req.query.category).trim();
+    where.category = String(req.query.category).trim(); // LỌC DMUC//
   }
   if (req.query.q) {
     const q = String(req.query.q).trim();
-    where.OR = [
+    where.OR = [    //TÌM KIẾM HOẶC MÔ TẢ DMUC//
       { description: { contains: q, mode: 'insensitive' } },
       { category: { contains: q, mode: 'insensitive' } },
     ];
   }
-  if (req.query.month) {
+  if (req.query.month) { // LỌC THÁNG//
     const { start, end } = monthRange(req.query.month);
     where.date = { gte: start, lt: end };
   } else if (req.query.from || req.query.to) {
@@ -95,7 +98,7 @@ exports.getTransactions = asyncHandler(async (req, res) => {
   } else {
     take = 1000;
   }
-
+  // LAY DL GIAO DICH//
   const transactions = await prisma.transaction.findMany({
     where,
     orderBy: [{ date: 'desc' }, { id: 'desc' }], // Mới nhất trước
@@ -105,11 +108,10 @@ exports.getTransactions = asyncHandler(async (req, res) => {
   res.json(transactions); // Trả mảng thuần đúng định dạng FE đang dùng
 });
 
-// POST /api/transactions
+// // POST /api/transaction  Luu vao database
 exports.createTransaction = asyncHandler(async (req, res) => {
   const data = parseTxFields(req.body);
-  const coords = parseCoords(req.body); // Kiểm tra toạ độ TRƯỚC khi ghi DB
-
+  const coords = parseCoords(req.body);
   const newTx = await prisma.transaction.create({
     data: {
       userId: req.userId,
@@ -143,7 +145,7 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
     ? await prisma.transaction.findFirst({ where: { id, userId: req.userId } })
     : null;
   assert(existing, 404, 'Không tìm thấy giao dịch.');
-
+  // kiểm tra du lieu //
   const data = parseTxFields(req.body, { partial: true });
   const coords = parseCoords(req.body);
   assert(Object.keys(data).length > 0 || Object.keys(coords).length > 0, 400, 'Không có dữ liệu nào để cập nhật.');
@@ -153,7 +155,7 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
     data: { ...data, ...coords },
   });
 
-  res.json(updated);
+  res.json(updated); // tra giao dich moi//
 });
 
 // DELETE /api/transactions/:id

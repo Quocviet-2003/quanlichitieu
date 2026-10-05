@@ -11,33 +11,39 @@ const { asyncHandler, assert, requireFields, toNumber, isValidObjectId } = requi
 
 function withPercent(goal) {
   const percentComplete =
+    //số tiền hiện tại / số tiền mục tiêu * 100.
     goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0;
   return { ...goal, percentComplete };
 }
 
 // GET /api/savings
 exports.getSavingsGoals = asyncHandler(async (req, res) => {
+  // Prisma tìm nhiều mục tiêu trong database.
   const goals = await prisma.savingsGoal.findMany({
     where: { userId: req.userId },
     orderBy: [{ status: 'desc' }, { createdAt: 'desc' }], // Đang làm trước, mới nhất trước
   });
+  // Tính phần trăm cho từng mục tiêu
+  // rồi trả danh sách về frontend.
   res.json(goals.map(withPercent));
 });
 
 // POST /api/savings
 exports.createSavingsGoal = asyncHandler(async (req, res) => {
+  // Kiểm tra body phải có:
   requireFields(req.body, ['name', 'targetAmount']);
   const name = String(req.body.name).trim();
+  // Chuyển targetAmount thành số.
   const targetAmount = toNumber(req.body.targetAmount);
   assert(name !== '', 400, 'Vui lòng nhập tên mục tiêu.');
   assert(Number.isFinite(targetAmount) && targetAmount > 0, 400, 'Số tiền mục tiêu phải là số lớn hơn 0.');
-
+  // Mặc định chưa có deadline.
   let deadline = null;
   if (req.body.deadline) {
     deadline = new Date(req.body.deadline);
     assert(!isNaN(deadline.getTime()), 400, 'Hạn chót không hợp lệ.');
   }
-
+  // Lấy kế hoạch đóng góp mỗi tháng.
   const monthlyContribution = toNumber(req.body.monthlyContribution);
 
   const goal = await prisma.savingsGoal.create({
@@ -110,13 +116,16 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
   requireFields(req.body, ['amount']);
   const amount = toNumber(req.body.amount);
   assert(Number.isFinite(amount) && amount > 0, 400, 'Số tiền đóng góp phải là số lớn hơn 0.');
-
+  // Lấy ID mục tiêu từ URL.
   const depositId = req.params.id;
+  // Tìm mục tiêu có:
+  // 1. ID đúng với depositId.
+  // 2. Thuộc người đang đăng nhập.
   const existing = isValidObjectId(depositId)
     ? await prisma.savingsGoal.findFirst({ where: { id: depositId, userId: req.userId } })
     : null;
   assert(existing, 404, 'Không tìm thấy mục tiêu tiết kiệm.');
-
+  // Cập nhật mục tiêu trong database.
   let goal = await prisma.savingsGoal.update({
     where: { id: existing.id },
     data: { currentAmount: { increment: amount } },
@@ -132,12 +141,14 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
 
   res.json({
     message: `Đã đóng góp thành công vào mục tiêu "${goal.name}".`,
+    // cập nhật status và tính phần trăm.
     goal: withPercent(goal),
   });
 });
 
 // DELETE /api/savings/:id
 exports.deleteSavingsGoal = asyncHandler(async (req, res) => {
+  // Lấy ID mục tiêu từ URL.
   const id = req.params.id;
   const deleted = isValidObjectId(id)
     ? await prisma.savingsGoal.deleteMany({ where: { id, userId: req.userId } })

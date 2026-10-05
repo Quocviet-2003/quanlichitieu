@@ -10,7 +10,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
   console.log(`📚 API docs: xem README.md | Ví dụ: http://localhost:${PORT}/api/auth/login`);
 
-  // Bắt đầu cron job
+  //Khi server chạy, cron được khởi động tại//
   scheduleFixedExpenses();
 
   const frontendPath =

@@ -4,6 +4,7 @@
 // Nhờ vậy API key không bao giờ lộ ra trình duyệt.
 // Các request đều kèm Authorization (token lưu ở localStorage bởi api.js).
 
+// summary là đoạn văn bản được main.js truyền vào
 async function apiGetAiInsight(summary) {
   let res;
   try {
@@ -13,8 +14,9 @@ async function apiGetAiInsight(summary) {
     }
     res = await fetch('/api/ai-insights', {
       method: 'POST',
+      // Gửi Content-Type và token 
       headers,
-      body: JSON.stringify({ summary })
+      body: JSON.stringify({ summary }) // Chuyển object { summary } thành chuỗi JSON
     });
   } catch (err) {
     // Thường gặp khi backend chưa chạy
@@ -29,11 +31,11 @@ async function apiGetAiInsight(summary) {
   }
 
   if (!res.ok) throw new Error(data.error || 'Lỗi phân tích AI');
+  // Trả câu nhận xét về nơi đã gọi hàm trong main.js
   return data.insight;
 }
 
-// Gửi 1 câu hỏi chatbot lên server, kèm lịch sử hội thoại (history) và tóm tắt
-// thu chi (summary) để AI trả lời đúng ngữ cảnh tài chính của người dùng.
+// Nhận question, ..
 async function apiChatWithAi(message, history, summary) {
   let res;
   try {
@@ -52,11 +54,11 @@ async function apiChatWithAi(message, history, summary) {
 
   let data;
   try {
-    data = await res.json();
+    data = await res.json(); //  // Đọc kết quả backend trả về
   } catch (err) {
     throw new Error('Server đang chạy không hỗ trợ AI. Hãy chạy app bằng lệnh "npm run dev" trong thư mục quanlichitieu-backend.');
   }
 
   if (!res.ok) throw new Error(data.error || 'Lỗi chatbot AI');
-  return data.reply;
+  return data.reply;  // Trả câu trả lời về main.js
 }

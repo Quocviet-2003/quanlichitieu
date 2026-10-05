@@ -15,13 +15,13 @@ const verifyToken = async (req, res, next) => {
   }
 
   try {
-    const token = header.split(' ')[1]; // Tách chữ "Bearer <token>"
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = header.split(' ')[1]; // Tách chữ "Bearer <token>" // lay token//
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // ktra token//
 
     if (!isValidObjectId(decoded.userId)) {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn.' });
     }
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } }); // timf laij usser//
     if (!user) {
       return res.status(401).json({ error: 'Tài khoản không tồn tại.' });
     }

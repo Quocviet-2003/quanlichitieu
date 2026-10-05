@@ -108,17 +108,19 @@ async function apiDeleteTransaction(id) {
 
 // --- NGÂN SÁCH (budget.html) ---
 
-// month dạng 'YYYY-MM', bỏ trống = tháng hiện tại.
-// Mỗi phần tử: { id, category, limitAmount, spent, remaining, percentUsed, warning, exceeded }
+// month dạng 'YYYY-MM', bỏ trống = tháng hiện tại//
 async function apiGetBudgets(month) {
   const query = month ? `?month=${encodeURIComponent(month)}` : '';
+  // Gửi yêu cầu GET tới backend
+  // Không truyền tháng thì backend sẽ tự lấy tháng hiện tại
   return apiFetch(`/api/budgets${query}`);
 }
 
 async function apiCreateBudget(budgetData) {
+  // budgetData nhận từ form, có dạng: { category, limitAmount, month? }.
   return apiFetch('/api/budgets', {
-    method: 'POST',
-    body: JSON.stringify(budgetData) // { category, limitAmount, month }
+    method: 'POST', // POST dùng để yêu cầu backend tạo một ngân sách mới.
+    body: JSON.stringify(budgetData) // Chuyển object JavaScript thành chuỗi JSON để gửi qua HTTP.
   });
 }
 
@@ -135,18 +137,21 @@ async function apiDeleteBudget(id) {
 
 // --- CHI CỐ ĐỊNH HÀNG THÁNG (fixed-expenses.html) ---
 
-// Mỗi phần tử: { id, category, description, amount }
+
+// Mỗi phần tử có dạng: { id, category, description, amount, deductDay, lastDeducted }
 async function apiGetFixedExpenses() {
   return apiFetch('/api/fixed-expenses');
 }
 
+//POST//
 async function apiCreateFixedExpense(fixedExpenseData) {
   return apiFetch('/api/fixed-expenses', {
     method: 'POST',
-    body: JSON.stringify(fixedExpenseData) // { category, description, amount }
+    body: JSON.stringify(fixedExpenseData) // { category, description, amount, deductDay }
   });
 }
 
+// PUT: API cập nhật lịch chi. Hiện giao diện chưa có nút sửa nhưng backend đã hỗ trợ.
 async function apiUpdateFixedExpense(id, fixedExpenseData) {
   return apiFetch(`/api/fixed-expenses/${id}`, {
     method: 'PUT',
@@ -154,12 +159,14 @@ async function apiUpdateFixedExpense(id, fixedExpenseData) {
   });
 }
 
+// DELETE: xóa lịch chi trong tương lai; không xóa các giao dịch CHI đã phát sinh.
 async function apiDeleteFixedExpense(id) {
   return apiFetch(`/api/fixed-expenses/${id}`, { method: 'DELETE' });
 }
 
 // --- THÔNG BÁO (notifications) ---
 
+// Lấy các thông báo cron đã lưu trong database (thành công hoặc thất bại).
 async function apiGetNotifications() {
   return apiFetch('/api/notifications');
 }

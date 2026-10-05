@@ -50,16 +50,19 @@ async function logUsage(userId, endpoint, result) {
 // POST /api/ai-insights
 exports.getInsights = asyncHandler(async (req, res) => {
   requireFields(req.body, ['summary']);
+  // Kiểm tra người dùng còn lượt AI không
   await checkQuota(req.userId);
+  // Tạo nội dung gửi cho mô hình AI
 
   const messages = [
     { role: 'system', content: buildSystemPrompt(String(req.body.summary)) },
     { role: 'user', content: 'Hãy đưa ra nhận xét và một vài lời khuyên tài chính ngắn gọn từ số liệu trên.' },
   ];
-
+  // Gọi Ollama và chờ kết quả
   const result = await callOllama(messages);
   await logUsage(req.userId, 'ai-insights', result);
 
+  // Gửi câu trả lời về frontend
   res.json({ insight: result.content });
 });
 
@@ -69,21 +72,22 @@ exports.chat = asyncHandler(async (req, res) => {
   assert(String(req.body.message).trim() !== '', 400, 'Câu hỏi không được để trống.');
   await checkQuota(req.userId);
 
-  // Chỉ giữ tối đa 10 lượt hội thoại gần nhất, đúng như server cũ của FE
+  // Lấy lịch sử từ frontend, Chỉ giữ tối đa 10 lượt hội thoại gần nhất, đúng như server cũ của FE
   const history = Array.isArray(req.body.history)
     ? req.body.history
-        .filter((m) => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string')
-        .slice(-10)
+      .filter((m) => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string')
+      .slice(-10)
     : [];
-
+  // Chuẩn bị dữ liệu gửi cho Ollama
   const messages = [
+    // Vai trò AI + summary tài chính
     { role: 'system', content: buildSystemPrompt(String(req.body.summary || '')) },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: String(req.body.message) },
   ];
-
+  // Gọi Ollama và nhận kết quả
   const result = await callOllama(messages);
   await logUsage(req.userId, 'ai-chat', result);
-
+  // Trả kết quả cho frontend
   res.json({ reply: result.content });
 });

@@ -45,7 +45,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Đăng ký toàn bộ nhóm API
+// Đăng ký toàn bộ nhóm API , nhận yc tim router
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes);
@@ -53,7 +53,9 @@ app.use('/api/savings', savingRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/admin', adminRoutes);
+// Gắn route: URL bắt đầu bằng /api/fixed-expenses sẽ đi vào fixed-expense.routes.js.
 app.use('/api/fixed-expenses', fixedExpenseRoutes);
+// Chuông frontend dùng route này để lấy thông báo cron đã lưu.
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentsRoutes); // IPN MoMo: public, xác thực bằng chữ ký HMAC
 app.use('/api', aiRoutes); // /api/ai-insights + /api/ai-chat (giữ nguyên như FE đang gọi)

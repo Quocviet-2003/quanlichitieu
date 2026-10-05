@@ -77,7 +77,7 @@ model Transaction {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @db.ObjectId
   amount      Float
-  type        String   // 'THU' hoặc 'CHI'
+  type        String   // 'THU' hoặc 'CHI'; cron chi cố định sẽ tạo bản ghi 'CHI'
   category    String
   description String?
   date        DateTime @default(now())
@@ -173,12 +173,12 @@ model AppSetting {
 // ==============================
 model FixedExpense {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String    @db.ObjectId
-  amount       Float
-  category     String
-  description  String?
+  userId       String    @db.ObjectId // Chủ sở hữu lịch; lấy từ token khi tạo
+  amount       Float     // Số tiền cần tạo giao dịch CHI mỗi kỳ
+  category     String    // Danh mục dùng cho giao dịch CHI và báo cáo
+  description  String?   // Tên/ghi chú hiển thị, ví dụ "Tiền Internet"
   deductDay    Int       @default(1) // Ngày tự động trừ tiền trong tháng (1-31)
-  lastDeducted DateTime? // Thời điểm trừ tiền thành công gần nhất
+  lastDeducted DateTime? // Lần thành công gần nhất; dùng chống thanh toán lặp trong tháng
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -195,7 +195,7 @@ model Notification {
   userId    String   @db.ObjectId
   title     String
   message   String
-  isRead    Boolean  @default(false)
+  isRead    Boolean  @default(false) // Mở chuông chỉ đánh dấu đã đọc, không xóa bản ghi
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

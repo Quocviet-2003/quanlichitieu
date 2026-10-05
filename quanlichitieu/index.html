@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,13 +14,13 @@
 
         extend: {
           colors: {
-            slate: { 50:'#faf8f2', 100:'#f1ede2', 200:'#ddd6c6', 300:'#c8bfa9', 400:'#988f77', 500:'#7a715c', 600:'#5f5847', 700:'#4a4437', 800:'#33302a', 900:'#22201b' },
-            gray: { 100:'#efeadd', 200:'#ddd6c6' },
-            blue: { 50:'#e9f2ec', 200:'#bcd8c6', 400:'#4a8a68', 500:'#2f7050', 600:'#24593f', 700:'#1d4934' },
-            emerald: { 50:'#ecf3ea', 200:'#cadfce', 500:'#2f7050', 600:'#24593f' },
-            rose: { 50:'#f9ebe6', 100:'#f3dcd4', 200:'#f0cdc2', 400:'#cf6b52', 500:'#bc5539', 600:'#a34428' },
-            amber: { 50:'#faf1dc', 200:'#ecdcae', 400:'#d99e33', 500:'#c4871f', 600:'#a57218' },
-            purple: { 50:'#efeaf6', 600:'#6d5a8e' }
+            slate: { 50: '#faf8f2', 100: '#f1ede2', 200: '#ddd6c6', 300: '#c8bfa9', 400: '#988f77', 500: '#7a715c', 600: '#5f5847', 700: '#4a4437', 800: '#33302a', 900: '#22201b' },
+            gray: { 100: '#efeadd', 200: '#ddd6c6' },
+            blue: { 50: '#e9f2ec', 200: '#bcd8c6', 400: '#4a8a68', 500: '#2f7050', 600: '#24593f', 700: '#1d4934' },
+            emerald: { 50: '#ecf3ea', 200: '#cadfce', 500: '#2f7050', 600: '#24593f' },
+            rose: { 50: '#f9ebe6', 100: '#f3dcd4', 200: '#f0cdc2', 400: '#cf6b52', 500: '#bc5539', 600: '#a34428' },
+            amber: { 50: '#faf1dc', 200: '#ecdcae', 400: '#d99e33', 500: '#c4871f', 600: '#a57218' },
+            purple: { 50: '#efeaf6', 600: '#6d5a8e' }
           }
         }
       }
@@ -31,6 +32,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
+
 <body class="antialiased font-sans flex flex-col md:flex-row min-h-screen relative">
 
   <!-- Nơi hiện thông báo (toast) góc phải màn hình -->
@@ -48,12 +50,13 @@
 
       <!-- Lời chào -->
       <div class="mb-8">
-          <h2 id="dashboard-greeting" class="text-2xl font-bold text-slate-900 mb-1">Xin chào</h2>
+        <h2 id="dashboard-greeting" class="text-2xl font-bold text-slate-900 mb-1">Xin chào</h2>
         <p class="text-sm text-slate-500">Đây là tình hình tài chính của bạn trong tháng này.</p>
       </div>
 
-      <!-- 4 thẻ số liệu tổng quan: Số dư / Thu nhập / Chi tiêu / Tiết kiệm -->
-      <div class="flex overflow-x-auto hide-scrollbar gap-4 md:grid md:grid-cols-4 md:gap-6 mb-8 pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+      <!-- tạo 4 thẻ số liệu tổng quan: Số dư / Thu nhập / Chi tiêu / Tiết kiệm -->
+      <div
+        class="flex overflow-x-auto hide-scrollbar gap-4 md:grid md:grid-cols-4 md:gap-6 mb-8 pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         <!-- Số dư hiện tại -->
         <div class="card min-w-[240px] md:min-w-0 p-5">
           <div class="flex justify-between items-start mb-3">
@@ -105,7 +108,8 @@
         <div class="card lg:col-span-2 p-5 md:p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-base font-semibold text-slate-900">Tổng quan chi tiêu</h3>
-            <select id="trend-period" class="text-sm border border-gray-200 bg-slate-50 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 text-slate-600">
+            <select id="trend-period"
+              class="text-sm border border-gray-200 bg-slate-50 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 text-slate-600">
               <option value="7">7 ngày qua</option>
               <option value="30" selected>30 ngày qua</option>
               <option value="6m">6 tháng</option>
@@ -167,4 +171,5 @@
   <script src="js/layout.js"></script>
   <script src="js/main.js"></script>
 </body>
+
 </html>

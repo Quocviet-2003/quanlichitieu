@@ -64,7 +64,7 @@ exports.register = asyncHandler(async (req, res) => {
   });
 });
 
-// POST /api/auth/login
+// POST /api/auth/login // KT tra email mk// lay em,mk tu req body//
 exports.login = asyncHandler(async (req, res) => {
   const email = String(req.body.email || "")
     .trim()

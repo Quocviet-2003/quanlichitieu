@@ -18,7 +18,7 @@ document.addEventListener("layoutLoaded", () => {
           window.location.href = "index.html";
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -123,20 +123,23 @@ document.addEventListener("layoutLoaded", () => {
     const categoryTotals = {};
 
     transactions.forEach((tx) => {
+      // Nếu giao dịch hiện tại là khoản THU
       if (tx.type === "THU") {
+        // Cộng số tiền vào tổng thu
         totalIncome += tx.amount;
       } else {
         totalExpense += tx.amount;
+        // Cộng số tiền vào đúng danh mục
         categoryTotals[tx.category] =
           (categoryTotals[tx.category] || 0) + tx.amount;
       }
     });
-
+    // Chuyển tổng tiền theo danh mục thành các dòng văn bản
     const categoryLines =
       Object.entries(categoryTotals)
         .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
         .join("\n") || "- (không có khoản chi nào)";
-
+    // Ghép các kết quả thành một đoạn văn bản rồi trả về
     return (
       `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
       `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
@@ -150,11 +153,10 @@ document.addEventListener("layoutLoaded", () => {
     if (!container) return;
 
     const toast = document.createElement("div");
-    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium ${
-      type === "success"
-        ? "bg-white border-emerald-100 text-emerald-800"
-        : "bg-white border-rose-100 text-rose-800"
-    }`;
+    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium ${type === "success"
+      ? "bg-white border-emerald-100 text-emerald-800"
+      : "bg-white border-rose-100 text-rose-800"
+      }`;
 
     const iconName = type === "success" ? "check-circle" : "alert-circle";
     const iconColor = type === "success" ? "text-emerald-500" : "text-rose-500";
@@ -172,7 +174,7 @@ document.addEventListener("layoutLoaded", () => {
 
   // Cho phép nơi khác (VD: sau khi thêm giao dịch) yêu cầu chuông thông báo tải lại ngay,
   // thay vì đợi người dùng tự bấm chuông. initNotifications() sẽ gán hàm thật vào đây.
-  let refreshNotifications = () => {};
+  let refreshNotifications = () => { };
 
   // --- 3. DỰNG HTML DANH SÁCH GIAO DỊCH (dùng chung cho mọi trang có bảng giao dịch) ---
 
@@ -186,6 +188,7 @@ document.addEventListener("layoutLoaded", () => {
     transactions.forEach((tx) => {
       window.loadedTransactionsMap[tx.id] = tx;
       const style = getIconForCategory(tx.category);
+      // XEM GIAO DỊCH hien thi ds//
       const amountStr =
         tx.type === "THU"
           ? `+${formatCurrency(tx.amount)}`
@@ -276,9 +279,10 @@ document.addEventListener("layoutLoaded", () => {
 
     // data-tx-filter trên thẻ <body> cho biết trang chỉ hiện Thu nhập (THU) hoặc Chi tiêu (CHI)
     const filterType = document.body.dataset.txFilter;
-
+    //xem xmemmmmmmmmmmm  XEM GIAO DICH//
     try {
-      let transactions = await apiGetTransactions();
+      let transactions = await apiGetTransactions(); // LAY DL GIAO DICH//
+      //lọc danh sách thu/ chi//
       if (filterType) {
         transactions = transactions.filter((tx) => tx.type === filterType);
       }
@@ -374,7 +378,7 @@ document.addEventListener("layoutLoaded", () => {
 
   // --- 5. TRANG TÌM KIẾM: lọc giao dịch theo từ khóa gõ vào ô tìm kiếm ---
   const initSearch = () => {
-    const searchInput = document.getElementById("search-input");
+    const searchInput = document.getElementById("search-input"); // nhap tk//
     const statusEl = document.getElementById("search-status");
     if (!searchInput) return;
 
@@ -388,7 +392,7 @@ document.addEventListener("layoutLoaded", () => {
         statusEl.textContent = "Nhập từ khóa để tìm kiếm giao dịch.";
         return;
       }
-
+      //loc//
       const results = allTransactions.filter(
         (tx) =>
           (tx.description || "").toLowerCase().includes(keyword) ||
@@ -406,12 +410,14 @@ document.addEventListener("layoutLoaded", () => {
       })
       .catch((error) => showToast(error.message, "error"));
 
-    searchInput.addEventListener("input", runSearch);
+    searchInput.addEventListener("input", runSearch); // chay//
   };
 
   // --- 6. TRANG THỐNG KÊ & BÁO CÁO: tính tổng thu/chi và vẽ biểu đồ ---
   const initReports = async () => {
+    // Tìm khu vực vẽ biểu đồ thu chi theo tháng//
     const trendCanvas = document.getElementById("reportTrendChart");
+    // Tìm khu vực vẽ biểu đồ chi tiêu theo danh mục//
     const categoryCanvas = document.getElementById("reportCategoryChart");
     if (!trendCanvas && !categoryCanvas) return;
 
@@ -422,9 +428,12 @@ document.addEventListener("layoutLoaded", () => {
       let totalIncome = 0;
       let totalExpense = 0;
       transactions.forEach((tx) => {
+        // Nếu giao dịch có loại THU//
+        //thì cộng số tiền vào tổng thu//
         if (tx.type === "THU") totalIncome += tx.amount;
         else totalExpense += tx.amount;
       });
+      // Chênh lệch = tổng thu - tổng chi
       const net = totalIncome - totalExpense;
 
       const incomeEl = document.getElementById("report-total-income");
@@ -442,18 +451,24 @@ document.addEventListener("layoutLoaded", () => {
       const monthlyTotals = {}; // key "YYYY-MM" -> { thu, chi }
       transactions.forEach((tx) => {
         const d = new Date(tx.date);
+        // Tạo khóa tháng dạng "YYYY-MM" 
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        // Nếu tháng này chưa tồn tại
+        // thì tạo mới với tổng thu và tổng chi bằng 0
         if (!monthlyTotals[key]) monthlyTotals[key] = { thu: 0, chi: 0 };
         if (tx.type === "THU") monthlyTotals[key].thu += tx.amount;
         else monthlyTotals[key].chi += tx.amount;
       });
+      // Lấy ra 6 tháng gần nhất 
       const sortedMonths = Object.keys(monthlyTotals).sort().slice(-6);
+      // Tạo nhãn tháng cho biểu đồ 
       const monthLabels = sortedMonths.map((key) => {
         const [year, month] = key.split("-");
         return `T${parseInt(month, 10)}/${year}`;
       });
 
       if (trendCanvas && window.Chart) {
+        // Vẽ biểu đồ cột 
         new Chart(trendCanvas, {
           type: "bar",
           data: {
@@ -461,12 +476,12 @@ document.addEventListener("layoutLoaded", () => {
             datasets: [
               {
                 label: "Thu nhập",
-                data: sortedMonths.map((k) => monthlyTotals[k].thu),
+                data: sortedMonths.map((k) => monthlyTotals[k].thu), // tổng thu từng tháng//
                 backgroundColor: "#10b981",
                 borderRadius: 4,
               },
               {
-                label: "Chi tiêu",
+                label: "Chi tiêu", // tổng chi từng tháng
                 data: sortedMonths.map((k) => monthlyTotals[k].chi),
                 backgroundColor: "#f43f5e",
                 borderRadius: 4,
@@ -486,6 +501,9 @@ document.addEventListener("layoutLoaded", () => {
       transactions
         .filter((tx) => tx.type === "CHI")
         .forEach((tx) => {
+
+          // Lấy tổng hiện tại của danh mục.
+          // Nếu danh mục chưa tồn tại thì lấy 0. 
           categoryTotals[tx.category] =
             (categoryTotals[tx.category] || 0) + tx.amount;
         });
@@ -501,6 +519,7 @@ document.addEventListener("layoutLoaded", () => {
             labels: categories,
             datasets: [
               {
+                // Tổng số tiền của từng danh mục//
                 data: categories.map((c) => categoryTotals[c]),
                 backgroundColor: categoryColors,
                 borderWidth: 0,
@@ -515,14 +534,17 @@ document.addEventListener("layoutLoaded", () => {
         });
       }
 
-      // Chú thích màu cho từng danh mục, thay cho legend mặc định của Chart.js
+      //Tính và hiển thị phần trăm
       const legendEl = document.getElementById("reportCategoryLegend");
       if (legendEl) {
         const totalForPct =
+          // Cộng tiền của tất cả danh mục
           categories.reduce((sum, c) => sum + categoryTotals[c], 0) || 1;
+        // Tạo HTML hiển thị danh mục và phần trăm
         legendEl.innerHTML =
           categories
             .map((cat, i) => {
+              // %
               const pct = Math.round((categoryTotals[cat] / totalForPct) * 100);
               return `
             <div class="flex items-center justify-between">
@@ -566,13 +588,18 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
+        // 9. Gọi API để lấy toàn bộ giao dịch của user hiện tại
         const transactions = await apiGetTransactions();
+        // 10. Tổng hợp giao dịch thành một đoạn văn bản ngắn
         const summary = buildFinanceSummaryText(transactions);
+        // 11. Gửi đoạn văn bản đó đến API phân tích AI
         const insight = await apiGetAiInsight(summary);
+        // 12. Đưa câu trả lời của AI lên màn hình
         contentEl.textContent = insight;
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
       } finally {
+        // 13. Dù thành công hay thất bại cũng mở lại nút và ẩn loading
         btn.disabled = false;
         btn.innerHTML = originalHtml;
         renderIcons(btn);
@@ -582,11 +609,17 @@ document.addEventListener("layoutLoaded", () => {
 
   // --- 8. CHATBOT AI: hỏi đáp tự do về thu chi, hiện trên mọi trang ---
   const initAiChat = () => {
+    // Nút mở chatbot
     const toggleBtn = document.getElementById("ai-chat-toggle-btn");
+    // Khung chatbot
     const panel = document.getElementById("ai-chat-panel");
+    // Nút đóng chatbot
     const closeBtn = document.getElementById("ai-chat-close-btn");
+    // Khung hiển thị tin nhắn
     const messagesEl = document.getElementById("ai-chat-messages");
+    // Ô nhập tin nhắn
     const input = document.getElementById("ai-chat-input");
+    // Nút gửi tin nhắn
     const sendBtn = document.getElementById("ai-chat-send-btn");
     if (!toggleBtn || !panel) return;
 
@@ -611,23 +644,24 @@ document.addEventListener("layoutLoaded", () => {
     };
 
     const sendMessage = async () => {
-      const question = input.value.trim();
+      const question = input.value.trim(); // lay cau hoi
       if (!question) return;
 
-      input.value = "";
-      appendMessage("user", question);
-      const thinkingBubble = appendMessage("assistant", "Đang suy nghĩ...");
+      input.value = ""; // xoa du lieu trong o nhap
+      appendMessage("user", question); // hien thi cau hoi
+      const thinkingBubble = appendMessage("assistant", "Đang suy nghĩ..."); //them bong bong suy nghi
 
-      sendBtn.disabled = true;
+      sendBtn.disabled = true; // bat nut gui
       try {
-        const transactions = await apiGetTransactions();
+        const transactions = await apiGetTransactions(); // lay danh sach giao dich
         const summary = buildFinanceSummaryText(transactions);
-        const reply = await apiChatWithAi(question, chatHistory, summary);
+        const reply = await apiChatWithAi(question, chatHistory, summary); //Gửi ba dữ liệu lên backend
 
         thinkingBubble.textContent = reply;
         // Lưu lại lượt hỏi/đáp này để lần hỏi sau AI vẫn nhớ ngữ cảnh
         chatHistory.push({ role: "user", content: question });
         chatHistory.push({ role: "assistant", content: reply });
+        // Nếu API bị lỗi thì thay bong bóng chờ bằng lỗi
       } catch (error) {
         thinkingBubble.textContent = `Lỗi: ${error.message}`;
       } finally {
@@ -665,12 +699,15 @@ document.addEventListener("layoutLoaded", () => {
 
     // Gom cảnh báo ngân sách (vượt/sắp vượt) + mục tiêu tiết kiệm vừa hoàn thành + Thông báo từ DB
     let unreadApiCount = 0;
-    
+
     const loadNotifications = async () => {
       try {
         const [budgets, goals, apiNotifs] = await Promise.all([
+          // Cảnh báo ngân sách.
           apiGetBudgets().catch(() => []),
+          // Mục tiêu tiết kiệm.
           apiGetSavingsGoals().catch(() => []),
+          // Thông báo từ DB.
           apiGetNotifications().catch(() => [])
         ]);
 
@@ -698,6 +735,7 @@ document.addEventListener("layoutLoaded", () => {
         });
         goals.forEach((g) => {
           if (g.status === "COMPLETED") {
+            // Tạo một dòng thông báo cho chuông.
             rows.push(
               buildRow(
                 "piggy-bank",
@@ -708,18 +746,18 @@ document.addEventListener("layoutLoaded", () => {
             );
           }
         });
-        
+
         // Thêm thông báo từ Database (API)
         apiNotifs.forEach(n => {
           if (!n.isRead) unreadApiCount++;
-          
+
           let icon = "bell";
           let colorClass = "tx-icon-blue";
           if (n.title.includes("thất bại")) {
-             icon = "alert-circle";
-             colorClass = "tx-icon-rose";
+            icon = "alert-circle";
+            colorClass = "tx-icon-rose";
           }
-          
+
           rows.push(`
             <div class="px-4 py-3 flex gap-3 items-start ${n.isRead ? 'opacity-70' : 'bg-blue-50/30'}" data-id="${n.id}">
               <div class="tx-icon ${colorClass} shrink-0">
@@ -734,9 +772,12 @@ document.addEventListener("layoutLoaded", () => {
             </div>
           `);
         });
-
+        // Ghép các dòng thông báo thành HTML
+        // rồi đưa vào danh sách chuông.
         listEl.innerHTML = rows.join("") || emptyHtml;
         renderIcons(listEl);
+        // Nếu có thông báo thì hiện chấm đỏ.
+        // Nếu không có thì ẩn chấm đỏ.
         dot.classList.toggle("hidden", rows.length === 0);
       } catch (error) {
         listEl.innerHTML = emptyHtml;
@@ -746,7 +787,7 @@ document.addEventListener("layoutLoaded", () => {
     bellBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       panel.classList.toggle("hidden");
-      
+
       if (!panel.classList.contains("hidden") && unreadApiCount > 0) {
         try {
           await apiMarkAllNotificationsRead();
@@ -782,9 +823,54 @@ document.addEventListener("layoutLoaded", () => {
 
   let currentEditTxId = null;
 
+  const txCategorySelect = document.getElementById("tx-category");
+  let txCategories = [];
+  let categoryLoadId = 0;
+
+  const renderTxCategories = (selected = txCategorySelect?.value) => {
+    if (!txCategorySelect || txCategorySelect.disabled) return;
+    const names = txCategories
+      .filter((cat) => cat.type === currentTxType || cat.type === "BOTH")
+      .map((cat) => cat.name);
+    // Giữ danh mục của giao dịch cũ nếu admin đã đổi tên hoặc xóa nó.
+    const original = window.loadedTransactionsMap?.[currentEditTxId];
+    if (original?.type === currentTxType && !names.includes(original.category)) {
+      names.push(original.category);
+    }
+    txCategorySelect.replaceChildren(...names.map((name) => new Option(name, name)));
+    if (!names.length) {
+      txCategorySelect.add(new Option("Chưa có danh mục cho loại giao dịch này", ""));
+    } else if (names.includes(selected)) {
+      txCategorySelect.value = selected;
+    }
+    if (saveBtn) saveBtn.disabled = !txCategorySelect.value;
+  };
+
+  const loadTxCategories = async () => {
+    if (!txCategorySelect) return;
+    const requestId = ++categoryLoadId;
+    const selected = txCategorySelect.value;
+    txCategorySelect.disabled = true;
+    txCategorySelect.replaceChildren(new Option("Đang tải danh mục...", ""));
+    if (saveBtn) saveBtn.disabled = true;
+    try {
+      const categories = await apiGetCategories(); // Gọi API và chờ nhận danh mục admin đã lưu.
+      if (requestId !== categoryLoadId) return;
+      txCategories = categories; // Giữ danh sách vừa nhận để đưa vào ô chọn danh mục.
+      txCategorySelect.disabled = false;
+      const original = window.loadedTransactionsMap?.[currentEditTxId];
+      renderTxCategories(original?.type === currentTxType ? original.category : selected);
+    } catch (error) {
+      if (requestId !== categoryLoadId) return;
+      txCategorySelect.replaceChildren(new Option("Không tải được danh mục", ""));
+      showToast(error.message || "Không tải được danh mục", "error");
+    }
+  };
+
   const openModal = () => {
-    if (!modal) return;
-    modal.classList.remove("hidden");
+    if (!modal) return; // Nếu trang không có bảng nhập giao dịch thì dừng.
+    loadTxCategories(); // Bắt đầu lấy danh mục admin đã lưu để người dùng chọn.
+    modal.classList.remove("hidden"); // Bỏ trạng thái ẩn: hiện bảng nhập giao dịch.
     setTimeout(() => {
       backdrop.classList.remove("opacity-0");
       card.classList.remove("opacity-0", "scale-95");
@@ -801,20 +887,21 @@ document.addEventListener("layoutLoaded", () => {
   };
 
   const resetModalForAdd = () => {
-    currentEditTxId = null;
+    currentEditTxId = null; // Đánh dấu đang thêm mới, không phải sửa giao dịch cũ.
     const title = document.getElementById("tx-modal-title");
-    if (title) title.innerText = "Thêm giao dịch mới";
-    document.getElementById("tx-amount").value = "";
-    document.getElementById("tx-desc").value = "";
+    if (title) title.innerText = "Thêm giao dịch mới"; // Đặt tiêu đề của bảng nhập.
+    document.getElementById("tx-amount").value = ""; // Xóa số tiền đã nhập từ lần trước.
+    document.getElementById("tx-desc").value = ""; // Xóa mô tả đã nhập từ lần trước.
     document.getElementById("tx-date").value = new Date()
       .toISOString()
-      .split("T")[0];
-    if (saveBtn) saveBtn.innerText = "Lưu giao dịch";
-    openModal();
+      .split("T")[0]; // Điền ngày mặc định theo UTC, có dạng YYYY-MM-DD.
+    if (saveBtn) saveBtn.innerText = "Lưu giao dịch"; // Đặt chữ trên nút lưu.
+    openModal(); // Mở bảng nhập và bắt đầu tải danh mục.
   };
-
+  //2345. XỬ LÝ SỬA GIAO DỊCH
+  //MỞ POPUP & CHUYỂN THÔNG TIN VÀO FORM//
   window.openEditTxModal = (txId) => {
-    const tx = window.loadedTransactionsMap?.[txId];
+    const tx = window.loadedTransactionsMap?.[txId]; // TÌM GD//
     if (!tx) return;
     currentEditTxId = txId;
 
@@ -837,64 +924,71 @@ document.addEventListener("layoutLoaded", () => {
     if (saveBtn) saveBtn.innerText = "Cập nhật";
     openModal();
   };
-
+  //2CDC. XỬ LÝ XÓA GIAO DỊCH// 
   window.deleteTx = async (txId) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa giao dịch này?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa giao dịch này?")) return; // HIỆN THÔNG BÁO XÁC NHẬN//
     try {
-      await apiDeleteTransaction(txId);
-      showToast("Đã xóa giao dịch thành công!");
-      renderTransactions();
-      refreshNotifications();
+      await apiDeleteTransaction(txId); // GỌI API XÓA//
+      showToast("Đã xóa giao dịch thành công!"); // HIỆN THÔNG BÁO//
+      renderTransactions(); // RENDER LẠI DS//
+      refreshNotifications(); // TẢI LẠI THÔNG BÁO// 
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message, "error"); // HIỆN THÔNG BÁO LỖI//
     }
   };
 
-  addTxBtns.forEach((btn) => btn.addEventListener("click", resetModalForAdd));
+  addTxBtns.forEach((btn) => btn.addEventListener("click", resetModalForAdd)); // Bấm nút Thêm giao dịch -> chuẩn bị form -> mở bảng.
   closeBtns.forEach((btn) => btn.addEventListener("click", closeModal));
 
   // Nút chuyển đổi Thu nhập / Chi tiêu trong popup
+  // Nút Thu đặt currentTxType = "THU", nút Chi đặt "CHI".
   let currentTxType = "CHI";
   const typeChiBtn = document.getElementById("tx-type-chi");
   const typeThuBtn = document.getElementById("tx-type-thu");
 
-  if (typeChiBtn && typeThuBtn) {
-    typeChiBtn.addEventListener("click", () => {
-      currentTxType = "CHI";
-      typeChiBtn.className =
+  if (typeChiBtn && typeThuBtn) { // Chỉ xử lý khi cả hai nút đều tồn tại
+    typeChiBtn.addEventListener("click", () => { // Khi người dùng nhấn nút "Chi"
+      currentTxType = "CHI"; // Cập nhật loại giao dịch thành "Chi"
+      renderTxCategories();
+      typeChiBtn.className = //  Làm nổi bật nút "Chi"
         "flex-1 py-1.5 bg-white shadow-sm rounded-md text-sm font-medium text-rose-600";
-      typeThuBtn.className =
+      typeThuBtn.className = // Đưa nút "Thu" về trạng thái chưa chọn
         "flex-1 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700";
     });
-    typeThuBtn.addEventListener("click", () => {
-      currentTxType = "THU";
-      typeThuBtn.className =
+    typeThuBtn.addEventListener("click", () => { // Khi người dùng nhấn nút "Thu"
+      currentTxType = "THU"; // Cập nhật loại giao dịch thành "Thu"
+      renderTxCategories();
+      typeThuBtn.className = //  Làm nổi bật nút "Thu"
         "flex-1 py-1.5 bg-white shadow-sm rounded-md text-sm font-medium text-emerald-600";
-      typeChiBtn.className =
+      typeChiBtn.className = // Đưa nút "Chi" về trạng thái chưa chọn
         "flex-1 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700";
     });
   }
 
-  // Bấm "Lưu giao dịch": gửi lên API rồi tải lại danh sách
-  if (saveBtn) {
-    saveBtn.addEventListener("click", async () => {
-      const amount = document.getElementById("tx-amount").value;
-      const category = document.getElementById("tx-category").value;
-      const date = document.getElementById("tx-date").value;
-      const desc = document.getElementById("tx-desc").value;
+  // THEM GD KHI BAM LUU//
+  if (saveBtn) { // Chỉ xử lý khi nút lưu tồn tại
+    saveBtn.addEventListener("click", async () => { // Xử lý sự kiện khi nhấn nút Lưu
+      const amount = document.getElementById("tx-amount").value; // Lấy số tiền từ ô nhập liệu
+      const category = document.getElementById("tx-category").value; // Lấy danh mục từ ô nhập liệu
+      const date = document.getElementById("tx-date").value; // Lấy ngày từ ô nhập liệu
+      const desc = document.getElementById("tx-desc").value; // Lấy mô tả từ ô nhập liệu
 
-      if (!amount || amount <= 0) {
+      if (txCategorySelect.disabled || !category) {
+        showToast("Vui lòng chọn danh mục hợp lệ", "error");
+        return;
+      }
+
+      if (!amount || amount <= 0) { // Kiểm tra số tiền hợp lệ
         showToast("Vui lòng nhập số tiền hợp lệ", "error");
         return;
       }
 
       saveBtn.disabled = true;
       saveBtn.innerText = "Đang lưu...";
-
       try {
         if (currentEditTxId) {
           await apiUpdateTransaction(currentEditTxId, {
-            amount: parseFloat(amount),
+            amount: parseFloat(amount), // Chuyển số tiền sang dạng số//
             type: currentTxType,
             category: category,
             description: desc,
@@ -903,16 +997,16 @@ document.addEventListener("layoutLoaded", () => {
           showToast("Sửa giao dịch thành công!");
         } else {
           await apiCreateTransaction({
-            amount: parseFloat(amount),
-            type: currentTxType,
+            amount: parseFloat(amount), // Chuyển số tiền sang dạng số
+            type: currentTxType, // Sử dụng loại giao dịch hiện tại
             category: category,
             description: desc,
-            date: date || new Date().toISOString(),
+            date: date || new Date().toISOString(), // Sử dụng ngày hiện tại nếu không có
           });
           showToast("Thêm giao dịch thành công!");
         }
 
-        closeModal();
+        closeModal(); // Đóng popup sau khi thêm/sửa thành công
 
         // Tải lại danh sách giao dịch của trang hiện tại (nếu có)
         renderTransactions();
@@ -1114,7 +1208,7 @@ document.addEventListener("layoutLoaded", () => {
             },
           });
         })
-        .catch(() => {}); // chưa có dữ liệu chi thì bỏ qua, đừng làm phiền người dùng
+        .catch(() => { }); // chưa có dữ liệu chi thì bỏ qua, đừng làm phiền người dùng
     }
   };
 
@@ -1135,20 +1229,23 @@ document.addEventListener("layoutLoaded", () => {
             .join("");
         }
       })
-      .catch(() => {});
-
+      .catch(() => { });
+    // nsssssssssshiển thị  ket qua //
     const renderBudgetCard = (b) => {
+      // Lấy biểu tượng và màu sắc tương ứng với danh mục//
       const style = getIconForCategory(b.category);
       const badge = b.exceeded
         ? '<span class="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-600 rounded-md border border-rose-200/50">Vượt mức</span>'
         : b.warning
           ? '<span class="text-xs font-medium px-2 py-1 bg-amber-50 text-amber-600 rounded-md border border-amber-200/50">Cảnh báo</span>'
           : '<span class="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-md">Bình thường</span>';
+      // Chọn màu cho thanh tiến độ
       const barColor = b.exceeded
         ? "bg-rose-500"
         : b.warning
           ? "bg-amber-500"
           : "bg-blue-500";
+      // Chọn màu chữ của số tiền
       const amountClass =
         b.exceeded || b.warning ? "text-amber-600" : "text-slate-900";
 
@@ -1180,19 +1277,22 @@ document.addEventListener("layoutLoaded", () => {
           </div>
         </div>`;
     };
-
+    // 33333.sau khi tạo ns done//
     const renderBudgets = async () => {
       try {
         const items = await apiGetBudgets();
+        // Chuyển từng ngân sách thành thẻ HTML rồi ghép lại
+        // Nếu không có ngân sách, hiển thị thông báo hướng dẫn
         listEl.innerHTML =
           items.map(renderBudgetCard).join("") ||
           '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có ngân sách nào cho tháng này. Bấm "Thêm ngân sách" để bắt đầu!</p>';
         renderIcons(listEl);
-
+        // Tìm tất cả nút xóa ngân sách//
         listEl.querySelectorAll(".delete-budget-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
             if (!confirm("Xoá ngân sách này?")) return;
             try {
+              // Gửi yêu cầu xóa ngân sách theo ID lưu trong data-id
               await apiDeleteBudget(btn.dataset.id);
               showToast("Đã xóa ngân sách.");
               renderBudgets();
@@ -1206,37 +1306,53 @@ document.addEventListener("layoutLoaded", () => {
         showToast(error.message, "error");
       }
     };
-    renderBudgets();
+    renderBudgets(); // Tải và hiển thị danh sách ngân sách ngay khi người dùng mở trang.
 
+    // Tìm nút "Thêm ngân sách" theo id.
     document
       .getElementById("add-budget-btn")
+      // Khi người dùng bấm nút thì mở popup thêm ngân sách.
+
       ?.addEventListener("click", () => budgetModal?.open());
+
+    // Tìm nút "Lưu ngân sách" theo id.
     document
       .getElementById("save-budget-btn")
+      // Khi người dùng bấm nút lưu, chạy hàm async để gửi dữ liệu lên backend.
       ?.addEventListener("click", async () => {
-        const category = document.getElementById("budget-category").value;
+        const category = document.getElementById("budget-category").value; // Lấy danh mục người dùng đã chọn.
+
         const limitAmount = parseFloat(
-          document.getElementById("budget-limit").value,
+          document.getElementById("budget-limit").value, // Lấy hạn mức từ input.
         );
 
+
+        // Nếu chưa chọn danh mục thì hiển thị lỗi và dừng xử lý.
         if (!category) {
           showToast("Vui lòng chọn danh mục", "error");
-          return;
+          return; // Không chạy tiếp các lệnh phía dưới.
         }
+
+        // Nếu chưa nhập hạn mức hoặc hạn mức không lớn hơn 0 thì báo lỗi.
         if (!limitAmount || limitAmount <= 0) {
           showToast("Vui lòng nhập hạn mức hợp lệ", "error");
-          return;
+          return; // Không gửi dữ liệu không hợp lệ đến backend.
         }
 
         try {
+
           await apiCreateBudget({ category, limitAmount });
-          budgetModal?.close();
-          document.getElementById("budget-limit").value = "";
+
+          budgetModal?.close(); // Đóng popup sau khi tạo thành công//
+          document.getElementById("budget-limit").value = ""; // Xóa hạn mức cũ trong ô nhập//
           showToast("Thêm ngân sách thành công!");
-          renderBudgets();
-          refreshNotifications();
+
+          renderBudgets(); // Tải lại để ngân sách mới xuất hiện trên giao diện.
+
+          refreshNotifications(); // Tính và cập nhật lại cảnh báo trên chuông.
         } catch (error) {
-          showToast(error.message, "error"); // VD: 409 đã tồn tại danh mục này trong tháng
+          // Hiển thị lỗi backend trả về, ví dụ 409 khi ngân sách đã tồn tại.
+          showToast(error.message, "error");
         }
       });
   };
@@ -1248,7 +1364,7 @@ document.addEventListener("layoutLoaded", () => {
     { icon: "plane-takeoff", color: "stat-icon-emerald" },
     { icon: "piggy-bank", color: "stat-icon-purple" },
   ];
-
+  // Hàm khởi tạo chức năng tiết kiệm.
   const initSavingsGoals = () => {
     const listEl = document.getElementById("goal-list");
     if (!listEl) return;
@@ -1269,11 +1385,11 @@ document.addEventListener("layoutLoaded", () => {
           : "text-rose-500";
     const barBgClass = (p) =>
       p >= 100 ? "bg-emerald-500" : p >= 70 ? "bg-blue-600" : "bg-rose-500";
-
+    // Nhận một mục tiêu từ mảng goals.
     const renderGoalCard = (goal, i) => {
       const ic = GOAL_ICONS[i % GOAL_ICONS.length];
       const completed = goal.status === "COMPLETED";
-
+      // Trả về HTML hiển thị mục tiêu.
       return `
         <div class="card card-hover p-5">
           <div class="flex justify-between items-start mb-4">
@@ -1313,10 +1429,11 @@ document.addEventListener("layoutLoaded", () => {
       try {
         const goals = await apiGetSavingsGoals();
         listEl.innerHTML =
+          // Lấy từng mục tiêu, chuyển thành HTML bằng renderGoalCard().
           goals.map(renderGoalCard).join("") ||
           '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có mục tiêu tiết kiệm nào. Bấm "Thêm mục tiêu" để bắt đầu!</p>';
         renderIcons(listEl);
-
+        // Tìm các nút "Đóng góp" trong danh sách
         listEl.querySelectorAll(".deposit-btn").forEach((btn) => {
           btn.addEventListener("click", () => {
             depositGoalId = btn.dataset.id;
@@ -1331,6 +1448,7 @@ document.addEventListener("layoutLoaded", () => {
           btn.addEventListener("click", async () => {
             if (!confirm("Xoá mục tiêu tiết kiệm này?")) return;
             try {
+              // Lấy ID từ data-id của nút và gửi sang hàm xóa.
               await apiDeleteSavingsGoal(btn.dataset.id);
               showToast("Đã xóa mục tiêu.");
               renderGoals();
@@ -1348,17 +1466,21 @@ document.addEventListener("layoutLoaded", () => {
     document
       .getElementById("add-goal-btn")
       ?.addEventListener("click", () => goalModal?.open());
-
+    // TIẾT KIỆM MỤC TIÊU//
     document
       .getElementById("save-goal-btn")
       ?.addEventListener("click", async () => {
+        // Lấy tên mục tiêu từ ô goal-name.
         const name = document.getElementById("goal-name").value.trim();
+        // Lấy số tiền mục tiêu.
+        // parseFloat() chuyển dữ liệu từ chuỗi sang số.
         const targetAmount = parseFloat(
           document.getElementById("goal-target").value,
         );
+        // Lấy số tiền dự kiến đóng góp mỗi tháng.
         const monthlyRaw = document.getElementById("goal-monthly").value;
+        // Lấy hạn hoàn thành mục tiêu. 
         const deadline = document.getElementById("goal-deadline").value;
-
         if (!name) {
           showToast("Vui lòng nhập tên mục tiêu", "error");
           return;
@@ -1378,6 +1500,7 @@ document.addEventListener("layoutLoaded", () => {
             deadline: deadline || undefined,
           });
           goalModal?.close();
+          // Danh sách ID của các ô nhập.
           ["goal-name", "goal-target", "goal-monthly", "goal-deadline"].forEach(
             (id) => {
               document.getElementById(id).value = "";
@@ -1396,6 +1519,7 @@ document.addEventListener("layoutLoaded", () => {
         const amount = parseFloat(
           document.getElementById("deposit-amount").value,
         );
+        // Nếu chưa có ID mục tiêu được chọn thì dừng.
         if (!depositGoalId) return;
         if (!amount || amount <= 0) {
           showToast("Vui lòng nhập số tiền hợp lệ", "error");
@@ -1500,7 +1624,6 @@ document.addEventListener("layoutLoaded", () => {
               <p class="text-sm font-medium text-slate-900 truncate">${log.user ? log.user.email : "(ẩn danh)"} • ${log.endpoint}</p>
               <p class="text-xs text-slate-500">${formatDate(log.createdAt)} • ${log.model} • ${log.tokens} tokens</p>
             </div>
-            <span class="text-xs text-slate-400 whitespace-nowrap">~$${(log.costEstimate || 0).toFixed(4)}</span>
           </div>`,
             )
             .join("") ||
@@ -1539,11 +1662,10 @@ document.addEventListener("layoutLoaded", () => {
               </td>
               <td class="px-5 py-3">${statusBadge}</td>
               <td class="px-5 py-3 text-right">
-                ${
-                  u.id === getCurrentUser()?.id
-                    ? '<span class="text-xs text-slate-400">(bạn)</span>'
-                    : `<button class="toggle-block-btn btn btn-secondary !px-3 !py-1.5 !text-xs" data-id="${u.id}" data-status="${u.status}">${blocked ? "Mở khóa" : "Khóa"}</button>`
-                }
+                ${u.id === getCurrentUser()?.id
+                ? '<span class="text-xs text-slate-400">(bạn)</span>'
+                : `<button class="toggle-block-btn btn btn-secondary !px-3 !py-1.5 !text-xs" data-id="${u.id}" data-status="${u.status}">${blocked ? "Mở khóa" : "Khóa"}</button>`
+              }
               </td>
             </tr>`;
           })
@@ -1726,10 +1848,12 @@ document.addEventListener("layoutLoaded", () => {
 
   // --- 17. CHI CỐ ĐỊNH HÀNG THÁNG ---
   const initFixedExpenses = () => {
+    // Chỉ chạy phần này trên trang có vùng danh sách chi cố định.
     const listEl = document.getElementById("fixed-expense-list");
     if (!listEl) return;
     const modal = bindMiniModal("fixed-expense-modal");
 
+    // Chuyển một object FixedExpense nhận từ API thành một thẻ HTML trên giao diện.
     const renderCard = (item) => {
       const style = getIconForCategory(item.category);
       return `
@@ -1757,6 +1881,7 @@ document.addEventListener("layoutLoaded", () => {
         </div>`;
     };
 
+    // Tạo đủ lựa chọn ngày 1-31 thay vì phải viết 31 thẻ option trong HTML.
     const deductDaySelect = document.getElementById("fixed-expense-deduct-day");
     if (deductDaySelect) {
       deductDaySelect.innerHTML = '';
@@ -1765,9 +1890,11 @@ document.addEventListener("layoutLoaded", () => {
       }
     }
 
+    // Gọi GET /api/fixed-expenses, tính tổng dự kiến mỗi tháng và dựng danh sách thẻ.
     const loadData = async () => {
       try {
         const items = await apiGetFixedExpenses();
+        // Đây là tổng các lịch chi, không nhất thiết là số tiền đã thanh toán.
         let total = items.reduce((sum, i) => sum + i.amount, 0);
         const totalEl = document.getElementById("fixed-expense-total");
         if (totalEl) totalEl.textContent = formatCurrency(total);
@@ -1777,6 +1904,7 @@ document.addEventListener("layoutLoaded", () => {
           '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào. Bấm "Thêm chi cố định" để bắt đầu!</p>';
         renderIcons(listEl);
 
+        // Sau khi dựng thẻ, gắn sự kiện xóa cho từng nút dựa trên id của lịch chi.
         listEl.querySelectorAll(".delete-fixed-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
             if (!confirm("Xoá khoản chi cố định này?")) return;
@@ -1794,11 +1922,14 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
 
+    // Vừa mở trang là tải dữ liệu hiện có từ backend.
     loadData();
 
+    // Nút "Thêm chi cố định" chỉ có nhiệm vụ mở popup nhập liệu.
     document
       .getElementById("add-fixed-btn")
       ?.addEventListener("click", () => modal?.open());
+
     document
       .getElementById("save-fixed-expense-btn")
       ?.addEventListener("click", async () => {
@@ -1817,12 +1948,14 @@ document.addEventListener("layoutLoaded", () => {
         }
 
         try {
+
           await apiCreateFixedExpense({ category, description: desc, amount, deductDay });
           modal?.close();
           document.getElementById("fixed-expense-amount").value = "";
           document.getElementById("fixed-expense-desc").value = "";
           document.getElementById("fixed-expense-deduct-day").value = "1";
           showToast("Thêm khoản chi cố định thành công!");
+          // Tải lại danh sách để lịch vừa tạo và tổng tiền xuất hiện ngay.
           loadData();
         } catch (error) {
           showToast(error.message, "error");

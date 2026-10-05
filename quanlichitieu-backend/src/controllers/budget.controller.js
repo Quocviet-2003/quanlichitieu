@@ -12,29 +12,34 @@ const { asyncHandler, assert, requireFields, toNumber, monthRange, currentMonth,
 
 // GET /api/budgets
 exports.getBudgets = asyncHandler(async (req, res) => {
-  const month = req.query.month || currentMonth();
+  const month = req.query.month || currentMonth(); // Nếu query không có month -> lấy tháng hiện tại
+
+  // Lấy range ngày (start, end) của tháng đó để tính toán chi tiêu
   const { start, end } = monthRange(month);
 
+
+  // Lấy các ngân sách của người dùng trong tháng đã chọn//
   const budgets = await prisma.budget.findMany({
     where: { userId: req.userId, month },
     orderBy: { category: 'asc' },
   });
-
+  // Nếu chưa có ngân sách thì trả về mảng rỗng
   if (budgets.length === 0) return res.json([]);
 
-  // Tổng chi thực tế theo từng danh mục trong tháng
+  //   // Tính tổng số tiền đã chi theo từng danh mục trong tháng
   const spentRows = await prisma.transaction.groupBy({
     by: ['category'],
     where: {
       userId: req.userId,
       type: 'CHI',
+      // Chỉ tính những danh mục đang có ngân sách
       category: { in: budgets.map((b) => b.category) },
       date: { gte: start, lt: end },
     },
     _sum: { amount: true },
   });
   const spentMap = Object.fromEntries(spentRows.map((r) => [r.category, r._sum.amount || 0]));
-
+  // tính toán % sd han mức//
   const result = budgets.map((b) => {
     const spent = spentMap[b.category] || 0;
     const percentUsed = b.limitAmount > 0 ? Math.round((spent / b.limitAmount) * 100) : 100;
@@ -58,23 +63,37 @@ exports.getBudgets = asyncHandler(async (req, res) => {
 // POST /api/budgets
 exports.createBudget = asyncHandler(async (req, res) => {
   requireFields(req.body, ['category', 'limitAmount']);
-  const category = String(req.body.category).trim();
-  const limitAmount = toNumber(req.body.limitAmount);
+
+  const category = String(req.body.category).trim(); // Chuyển danh mục thành chuỗi và bỏ khoảng trắng hai đầu.
+
+  const limitAmount = toNumber(req.body.limitAmount); // Chuyển hạn mức nhận từ frontend sang kiểu số.
+
+  // Nếu hạn mức không phải số hợp lệ hoặc không lớn hơn 0 thì trả lỗi HTTP 400.
   assert(Number.isFinite(limitAmount) && limitAmount > 0, 400, 'Hạn mức phải là số lớn hơn 0.');
 
-  const month = req.body.month || currentMonth();
-  monthRange(month); // kiểm tra định dạng tháng
+  const month = req.body.month || currentMonth(); // Có month thì dùng month đó, không có thì lấy tháng hiện tại.
+  monthRange(month); // Kiểm tra tháng có đúng định dạng YYYY-MM hay không.
 
   try {
+    // Dùng Prisma để tạo một bản ghi Budget mới trong database.
     const budget = await prisma.budget.create({
-      data: { userId: req.userId, category, limitAmount, month },
+      data: {
+        userId: req.userId, // ID người dùng đang đăng nhập, được lấy từ token xác thực.
+        category, // Danh mục ngân sách, ví dụ: "Ăn uống".
+        limitAmount, // Hạn mức chi tiêu, ví dụ: 3.000.000 đồng.
+        month, // Tháng áp dụng ngân sách, ví dụ: "2026-09".
+      },
     });
-    res.status(201).json(budget);
+
+    res.status(201).json(budget); // Trả mã 201 và ngân sách vừa tạo về frontend.
   } catch (err) {
+    // P2002 là lỗi trùng dữ liệu unique của Prisma:
+    // một người dùng không thể tạo hai ngân sách cùng danh mục trong cùng tháng.
     if (err.code === 'P2002') {
       throw Object.assign(new Error('Ngân sách cho danh mục này trong tháng đã tồn tại.'), { status: 409 });
     }
-    throw err;
+
+    throw err; // Chuyển các lỗi khác cho middleware xử lý lỗi chung.
   }
 });
 

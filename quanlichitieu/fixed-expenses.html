@@ -49,8 +49,10 @@
       <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <p class="text-sm text-slate-500">Quản lý các khoản phải chi định kỳ mỗi tháng.</p>
+          <!-- main.js cộng amount của tất cả lịch chi rồi đưa kết quả vào span này. -->
           <p class="text-lg font-semibold text-slate-900 mt-1">Tổng cộng: <span id="fixed-expense-total" class="text-rose-600">0 ₫</span>/tháng</p>
         </div>
+        <!-- main.js bắt sự kiện click để mở popup fixed-expense-modal. -->
         <button id="add-fixed-btn" class="btn btn-secondary">
           <i data-icon="plus" class="w-4 h-4"></i>
           <span>Thêm chi cố định</span>
@@ -75,6 +77,7 @@
           </button>
         </div>
         <div class="p-5 space-y-5">
+          <!-- Các id bên dưới là cầu nối để main.js đọc dữ liệu người dùng nhập. -->
           <div>
             <label class="form-label-caps">Danh mục</label>
             <select id="fixed-expense-category" class="form-input appearance-none">
@@ -114,6 +117,7 @@
         </div>
         <div class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
           <button class="close-mini-btn btn btn-secondary">Hủy</button>
+          <!-- Khi bấm nút này, main.js kiểm tra dữ liệu rồi gọi POST /api/fixed-expenses. -->
           <button id="save-fixed-expense-btn" class="btn btn-primary">Lưu thông tin</button>
         </div>
       </div>

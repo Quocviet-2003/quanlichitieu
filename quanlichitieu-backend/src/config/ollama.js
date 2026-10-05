@@ -21,6 +21,7 @@ async function resolveModel() {
  * Trả về: { model, content, promptTokens, completionTokens }
  */
 async function callOllama(messages) {
+  // Lấy API key từ file .env của backend
   const apiKey = process.env.OLLAMA_API_KEY;
   if (!apiKey) {
     throw new ApiError(500, 'Chưa cấu hình API key AI trên server. Vui lòng điền OLLAMA_API_KEY vào file .env.');
@@ -34,9 +35,9 @@ async function callOllama(messages) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,  // Gửi API key để Ollama xác thực
       },
-      body: JSON.stringify({ model, messages, stream: false }),
+      body: JSON.stringify({ model, messages, stream: false }), // Gửi model và messages đến https://ollama.com/api/chat
     });
 
     if (!response.ok) {
@@ -48,12 +49,13 @@ async function callOllama(messages) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(502, 'Không thể kết nối tới dịch vụ AI. Vui lòng thử lại sau.');
   }
-
+  // Số token đầu vào
   const promptTokens = data.prompt_eval_count || 0;
-  const completionTokens = data.eval_count || 0;
+  const completionTokens = data.eval_count || 0; // Số token AI đã tạo
 
   return {
     model,
+    // lấy nd câu trả lời
     content: data.message?.content || 'AI không trả về nội dung nào.',
     promptTokens,
     completionTokens,
