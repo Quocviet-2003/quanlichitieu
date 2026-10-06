@@ -1411,7 +1411,13 @@ document.addEventListener("layoutLoaded", () => {
               </div>
               <div>
                 <h3 class="text-base font-semibold text-slate-900">${b.category}</h3>
-                <p class="text-xs text-slate-500">Tháng này</p>
+                <p class="text-xs text-slate-500">${(() => {
+                  const now = new Date();
+                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                  if (b.month === currentMonth) return 'Tháng này';
+                  const [yyyy, mm] = b.month.split('-');
+                  return `Tháng ${parseInt(mm)}/${yyyy}`;
+                })()}</p>
               </div>
             </div>
             ${badge}
