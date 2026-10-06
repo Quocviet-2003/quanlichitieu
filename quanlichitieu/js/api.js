@@ -217,9 +217,10 @@ async function apiGetCategories() {
   return apiFetch('/api/categories');
 }
 
-// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, monthIncome, monthExpense, ... }
-async function apiGetStatsSummary() {
-  return apiFetch('/api/stats/summary');
+// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
+async function apiGetStatsSummary(date = null) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  return apiFetch(`/api/stats/summary${query}`);
 }
 
 // Thu/chi theo tháng (mặc định 6 tháng): [{ month: 'YYYY-MM', thu, chi }]
@@ -233,7 +234,10 @@ async function apiGetCategoryBreakdown(type = 'CHI') {
 }
 
 // Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
-async function apiGetDailyTrend(days = 30) {
+async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
+  if (startDate && endDate) {
+    return apiFetch(`/api/stats/trend?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+  }
   return apiFetch(`/api/stats/trend?days=${days}`);
 }
 
