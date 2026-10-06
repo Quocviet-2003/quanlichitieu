@@ -13,14 +13,5 @@ router.get('/me', verifyToken, authController.me);
 router.put('/profile', verifyToken, authController.updateProfile);
 router.put('/password', verifyToken, authController.changePassword);
 
-// Ví tiền
-// Nạp tiền phải qua CỔNG THANH TOÁN có quy trình:
-//   tạo đơn -> chuyển khoản/thẻ+OTP/ví -> xác nhận -> tiền mới về ví
-router.get('/wallet', verifyToken, authController.getWallet);
-const paymentController = require('../controllers/payment.controller');
-router.post('/wallet/checkout', verifyToken, paymentController.createCheckout);
-router.post('/wallet/checkout/:orderCode/confirm', verifyToken, paymentController.confirmCheckout);
-router.post('/wallet/checkout/:orderCode/cancel', verifyToken, paymentController.cancelCheckout);
-router.get('/wallet/orders', verifyToken, paymentController.listOrders);
 
 module.exports = router;

@@ -170,27 +170,3 @@ exports.changePassword = asyncHandler(async (req, res) => {
 });
 
 // ============================================================
-// VÍ TIỀN
-// ============================================================
-
-// GET /api/auth/wallet  — số dư + lịch sử biến động + đơn nạp tiền gần nhất
-exports.getWallet = asyncHandler(async (req, res) => {
-  const [logs, orders] = await Promise.all([
-    prisma.walletLog.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-    prisma.paymentOrder.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-  ]);
-
-  res.json({
-    balance: req.user.walletBalance || 0,
-    logs,
-    orders, // Các đơn thanh toán nạp tiền (PENDING/PAID/CANCELLED/EXPIRED)
-  });
-});

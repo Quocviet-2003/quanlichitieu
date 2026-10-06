@@ -257,27 +257,6 @@ async function apiAdminGetStats() {
   return apiFetch('/api/admin/stats');
 }
 
-async function apiAdminGetCategories() {
-  return apiFetch('/api/admin/categories');
-}
-
-async function apiAdminCreateCategory(catData) {
-  return apiFetch('/api/admin/categories', {
-    method: 'POST',
-    body: JSON.stringify(catData)
-  });
-}
-
-async function apiAdminUpdateCategory(id, catData) {
-  return apiFetch(`/api/admin/categories/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(catData)
-  });
-}
-
-async function apiAdminDeleteCategory(id) {
-  return apiFetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
-}
 
 async function apiAdminGetAiSettings() {
   return apiFetch('/api/admin/ai-settings');

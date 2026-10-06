@@ -31,7 +31,8 @@ async function loadLayout() {
   }
 
   // 3. Bôi sáng menu tương ứng với trang đang mở (so khớp theo tên file URL)
-  const currentPath = window.location.pathname.split("/").pop() || "index.html";
+  const pathWithoutQuery = window.location.pathname.split("?")[0];
+  const currentPath = pathWithoutQuery.split("/").pop() || "index.html";
   document
     .querySelectorAll("#layout-sidebar a, #layout-bottom-nav a")
     .forEach((link) => {
