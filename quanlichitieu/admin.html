@@ -88,37 +88,7 @@
           </div>
         </div>
 
-        <!-- 3. Quản lý danh mục toàn hệ thống -->
-        <div class="card overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-100">
-            <h3 class="text-base font-semibold text-slate-900">Danh mục mặc định (áp dụng mọi người dùng)</h3>
-          </div>
-          <div class="px-5 py-4 border-b border-gray-100 flex flex-col md:flex-row gap-3 md:items-end">
-            <div class="flex-1"><label class="form-label-caps">Tên danh mục</label><input type="text" id="cat-name" placeholder="VD: Y tế" class="form-input" /></div>
-            <div class="md:w-36"><label class="form-label-caps">Kiểu</label>
-              <select id="cat-type" class="form-input appearance-none">
-                <option value="CHI">Chi tiêu</option>
-                <option value="THU">Thu nhập</option>
-                <option value="BOTH">Cả hai</option>
-              </select>
-            </div>
-            <div class="md:w-40"><label class="form-label-caps">Icon (tên file)</label><input type="text" id="cat-icon" value="tags" class="form-input" /></div>
-            <div class="md:w-24"><label class="form-label-caps">Màu</label><input type="color" id="cat-color" value="#ef4444" class="form-input h-[38px] p-1" /></div>
-            <button id="add-cat-btn" class="btn btn-primary"><i data-icon="plus" class="w-4 h-4"></i><span>Thêm</span></button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th class="table-head-cell bg-slate-50">Danh mục</th>
-                  <th class="table-head-cell bg-slate-50">Kiểu</th>
-                  <th class="table-head-cell bg-slate-50 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody id="admin-cats-tbody" class="divide-y divide-gray-100"></tbody>
-            </table>
-          </div>
-        </div>
+
 
         <!-- 4. Cấu hình AI + log gần đây -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

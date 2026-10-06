@@ -11,10 +11,6 @@ router.put('/users/:id/status', adminController.setUserStatus);
 
 router.get('/stats', adminController.getStats);
 
-router.get('/categories', adminController.getCategories);
-router.post('/categories', adminController.createCategory);
-router.put('/categories/:id', adminController.updateCategory);
-router.delete('/categories/:id', adminController.deleteCategory);
 
 router.get('/ai-settings', adminController.getAiSettings);
 router.put('/ai-settings', adminController.updateAiSettings);

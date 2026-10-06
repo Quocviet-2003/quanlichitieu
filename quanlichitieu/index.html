@@ -27,6 +27,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- style.css: style nền chung. components.css: các class dùng chung (card, btn, nav-link...) -->
   <link rel="stylesheet" href="css/style.css">
@@ -65,7 +66,7 @@
             </div>
           </div>
           <p class="text-sm font-medium text-slate-500 mb-1">Số dư hiện tại</p>
-          <h3 id="stat-balance" class="text-2xl font-bold text-slate-900">...</h3>
+          <h3 id="stat-balance" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 
         <!-- Tổng thu nhập -->
@@ -76,7 +77,7 @@
             </div>
           </div>
           <p class="text-sm font-medium text-slate-500 mb-1">Tổng thu nhập</p>
-          <h3 id="stat-income" class="text-2xl font-bold text-slate-900">...</h3>
+          <h3 id="stat-income" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 
         <!-- Tổng chi tiêu -->
@@ -87,7 +88,7 @@
             </div>
           </div>
           <p class="text-sm font-medium text-slate-500 mb-1">Tổng chi tiêu</p>
-          <h3 id="stat-expense" class="text-2xl font-bold text-slate-900">...</h3>
+          <h3 id="stat-expense" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 
         <!-- Tiết kiệm -->
@@ -98,7 +99,7 @@
             </div>
           </div>
           <p class="text-sm font-medium text-slate-500 mb-1">Tiết kiệm</p>
-          <h3 id="stat-savings" class="text-2xl font-bold text-slate-900">...</h3>
+          <h3 id="stat-savings" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
       </div>
 
@@ -110,9 +111,7 @@
             <h3 class="text-base font-semibold text-slate-900">Tổng quan chi tiêu</h3>
             <select id="trend-period"
               class="text-sm border border-gray-200 bg-slate-50 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 text-slate-600">
-              <option value="7">7 ngày qua</option>
-              <option value="30" selected>30 ngày qua</option>
-              <option value="6m">6 tháng</option>
+              <!-- Danh sách tháng và năm sẽ được JS tự động điền vào đây -->
             </select>
           </div>
           <div class="h-64 w-full relative">

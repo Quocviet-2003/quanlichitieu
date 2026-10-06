@@ -279,7 +279,35 @@ document.addEventListener("layoutLoaded", () => {
 
     // data-tx-filter trên thẻ <body> cho biết trang chỉ hiện Thu nhập (THU) hoặc Chi tiêu (CHI)
     const filterType = document.body.dataset.txFilter;
-    //xem xmemmmmmmmmmmm  XEM GIAO DICH//
+    // Hiển thị Skeleton Loading
+    if (tbody) {
+      tbody.innerHTML = Array(3).fill(`
+        <tr class="animate-pulse">
+          <td class="px-5 py-3"><div class="h-4 bg-slate-200 rounded w-24"></div></td>
+          <td class="px-5 py-3"><div class="h-4 bg-slate-200 rounded w-20"></div></td>
+          <td class="px-5 py-3"><div class="h-4 bg-slate-200 rounded w-24"></div></td>
+          <td class="px-5 py-3"><div class="h-4 bg-slate-200 rounded w-16 ml-auto"></div></td>
+          <td class="px-5 py-3"><div class="h-4 bg-slate-200 rounded w-12 ml-auto"></div></td>
+        </tr>
+      `).join("");
+    }
+    if (mobileList) {
+      mobileList.innerHTML = Array(3).fill(`
+        <div class="px-4 py-3 animate-pulse bg-white border-b border-slate-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-slate-200 rounded-full"></div>
+              <div>
+                <div class="h-3 bg-slate-200 rounded w-20 mb-2"></div>
+                <div class="h-2 bg-slate-200 rounded w-16"></div>
+              </div>
+            </div>
+            <div class="h-4 bg-slate-200 rounded w-16"></div>
+          </div>
+        </div>
+      `).join("");
+    }
+
     try {
       let transactions = await apiGetTransactions(); // LAY DL GIAO DICH//
       //lọc danh sách thu/ chi//
@@ -307,30 +335,49 @@ document.addEventListener("layoutLoaded", () => {
     const typeSelect = document.getElementById("tx-filter-type");
     const categorySelect = document.getElementById("tx-filter-category");
     const clearBtn = document.getElementById("tx-filter-clear-btn");
-    const startDateInput = document.getElementById("tx-filter-start-date");
-    const endDateInput = document.getElementById("tx-filter-end-date");
+    const monthInput = document.getElementById("tx-filter-month");
     if (!filterBtn) return;
 
     let allTransactions = [];
 
     const applyFilters = () => {
       let list = allTransactions;
-      if (typeSelect.value)
+
+      const pageFilterType = document.body.dataset.txFilter;
+      if (pageFilterType) {
+        list = list.filter((tx) => tx.type === pageFilterType);
+      } else if (typeSelect && typeSelect.value) {
         list = list.filter((tx) => tx.type === typeSelect.value);
-      if (categorySelect.value)
+      }
+
+      if (categorySelect && categorySelect.value)
         list = list.filter((tx) => tx.category === categorySelect.value);
-      if (startDateInput && startDateInput.value)
-        list = list.filter((tx) => tx.date >= startDateInput.value);
-      if (endDateInput && endDateInput.value)
-        list = list.filter((tx) => tx.date <= endDateInput.value);
+      if (monthInput && monthInput.value) {
+        // monthInput.value format is "YYYY-MM"
+        list = list.filter((tx) => tx.date && tx.date.startsWith(monthInput.value));
+      }
+
+      const totalEl = document.getElementById("page-total-amount");
+      if (totalEl) {
+        const total = list.reduce((sum, tx) => sum + tx.amount, 0);
+        totalEl.textContent = formatCurrency(total);
+      }
+
       renderTxList(list);
     };
 
     // Đổ danh mục đang thực sự xuất hiện trong giao dịch vào select lọc
     const fillCategoryOptions = () => {
-      const cats = [...new Set(allTransactions.map((tx) => tx.category))]
+      let list = allTransactions;
+      const pageFilterType = document.body.dataset.txFilter;
+      if (pageFilterType) {
+        list = list.filter((tx) => tx.type === pageFilterType);
+      }
+
+      const cats = [...new Set(list.map((tx) => tx.category))]
         .filter(Boolean)
         .sort();
+      if (!categorySelect) return;
       const current = categorySelect.value;
       categorySelect.innerHTML =
         '<option value="">Tất cả danh mục</option>' +
@@ -362,18 +409,18 @@ document.addEventListener("layoutLoaded", () => {
       }
     });
 
-    typeSelect.addEventListener("change", applyFilters);
-    categorySelect.addEventListener("change", applyFilters);
-    if (startDateInput) startDateInput.addEventListener("change", applyFilters);
-    if (endDateInput) endDateInput.addEventListener("change", applyFilters);
+    if (typeSelect) typeSelect.addEventListener("change", applyFilters);
+    if (categorySelect) categorySelect.addEventListener("change", applyFilters);
+    if (monthInput) monthInput.addEventListener("change", applyFilters);
 
-    clearBtn.addEventListener("click", () => {
-      typeSelect.value = "";
-      categorySelect.value = "";
-      if (startDateInput) startDateInput.value = "";
-      if (endDateInput) endDateInput.value = "";
-      applyFilters();
-    });
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (typeSelect) typeSelect.value = "";
+        if (categorySelect) categorySelect.value = "";
+        if (monthInput) monthInput.value = "";
+        applyFilters();
+      });
+    }
   };
 
   // --- 5. TRANG TÌM KIẾM: lọc giao dịch theo từ khóa gõ vào ô tìm kiếm ---
@@ -468,32 +515,36 @@ document.addEventListener("layoutLoaded", () => {
       });
 
       if (trendCanvas && window.Chart) {
-        // Vẽ biểu đồ cột 
-        new Chart(trendCanvas, {
-          type: "bar",
-          data: {
-            labels: monthLabels,
-            datasets: [
-              {
-                label: "Thu nhập",
-                data: sortedMonths.map((k) => monthlyTotals[k].thu), // tổng thu từng tháng//
-                backgroundColor: "#10b981",
-                borderRadius: 4,
-              },
-              {
-                label: "Chi tiêu", // tổng chi từng tháng
-                data: sortedMonths.map((k) => monthlyTotals[k].chi),
-                backgroundColor: "#f43f5e",
-                borderRadius: 4,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } },
-          },
-        });
+        if (sortedMonths.length === 0) {
+          trendCanvas.parentElement.innerHTML = '<p class="text-center text-slate-500 text-sm flex items-center justify-center h-full min-h-[200px]">Chưa có dữ liệu</p>';
+        } else {
+          // Vẽ biểu đồ cột 
+          new Chart(trendCanvas, {
+            type: "bar",
+            data: {
+              labels: monthLabels,
+              datasets: [
+                {
+                  label: "Thu nhập",
+                  data: sortedMonths.map((k) => monthlyTotals[k].thu), // tổng thu từng tháng//
+                  backgroundColor: "#10b981",
+                  borderRadius: 4,
+                },
+                {
+                  label: "Chi tiêu", // tổng chi từng tháng
+                  data: sortedMonths.map((k) => monthlyTotals[k].chi),
+                  backgroundColor: "#f43f5e",
+                  borderRadius: 4,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { y: { beginAtZero: true } },
+            },
+          });
+        }
       }
 
       // 6.3. Gom chi tiêu theo danh mục để vẽ biểu đồ tròn
@@ -512,26 +563,30 @@ document.addEventListener("layoutLoaded", () => {
         (cat) => CATEGORY_CHART_COLORS[cat] || "#64748b",
       );
 
-      if (categoryCanvas && window.Chart && categories.length) {
-        new Chart(categoryCanvas, {
-          type: "doughnut",
-          data: {
-            labels: categories,
-            datasets: [
-              {
-                // Tổng số tiền của từng danh mục//
-                data: categories.map((c) => categoryTotals[c]),
-                backgroundColor: categoryColors,
-                borderWidth: 0,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-          },
-        });
+      if (categoryCanvas && window.Chart) {
+        if (categories.length === 0) {
+          categoryCanvas.parentElement.innerHTML = '<p class="text-center text-slate-500 text-sm flex items-center justify-center h-full min-h-[200px]">Chưa có dữ liệu</p>';
+        } else {
+          new Chart(categoryCanvas, {
+            type: "doughnut",
+            data: {
+              labels: categories,
+              datasets: [
+                {
+                  // Tổng số tiền của từng danh mục//
+                  data: categories.map((c) => categoryTotals[c]),
+                  backgroundColor: categoryColors,
+                  borderWidth: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+            },
+          });
+        }
       }
 
       //Tính và hiển thị phần trăm
@@ -594,8 +649,12 @@ document.addEventListener("layoutLoaded", () => {
         const summary = buildFinanceSummaryText(transactions);
         // 11. Gửi đoạn văn bản đó đến API phân tích AI
         const insight = await apiGetAiInsight(summary);
-        // 12. Đưa câu trả lời của AI lên màn hình
-        contentEl.textContent = insight;
+        // 12. Đưa câu trả lời của AI lên màn hình (sử dụng marked để hỗ trợ bảng/Markdown)
+        if (window.marked) {
+          contentEl.innerHTML = marked.parse(insight);
+        } else {
+          contentEl.textContent = insight;
+        }
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
       } finally {
@@ -657,7 +716,13 @@ document.addEventListener("layoutLoaded", () => {
         const summary = buildFinanceSummaryText(transactions);
         const reply = await apiChatWithAi(question, chatHistory, summary); //Gửi ba dữ liệu lên backend
 
-        thinkingBubble.textContent = reply;
+        if (window.marked) {
+          thinkingBubble.innerHTML = marked.parse(reply);
+          // Thêm class prose-sm vào bong bóng chatbot
+          thinkingBubble.classList.add("prose", "prose-sm", "max-w-none");
+        } else {
+          thinkingBubble.textContent = reply;
+        }
         // Lưu lại lượt hỏi/đáp này để lần hỏi sau AI vẫn nhớ ngữ cảnh
         chatHistory.push({ role: "user", content: question });
         chatHistory.push({ role: "assistant", content: reply });
@@ -878,8 +943,18 @@ document.addEventListener("layoutLoaded", () => {
     }, 10);
   };
 
-  const closeModal = () => {
+  const closeModal = (force = false) => {
     if (!modal) return;
+
+    // Nếu không phải force (gọi qua nút Cancel/Đóng), kiểm tra dữ liệu chưa lưu
+    if (force !== true) {
+      const amount = document.getElementById("tx-amount")?.value;
+      const desc = document.getElementById("tx-desc")?.value;
+      if (amount || desc) {
+        if (!confirm("Bạn có dữ liệu chưa lưu. Xác nhận đóng?")) return;
+      }
+    }
+
     backdrop.classList.add("opacity-0");
     card.classList.remove("opacity-100", "scale-100");
     card.classList.add("opacity-0", "scale-95");
@@ -890,7 +965,17 @@ document.addEventListener("layoutLoaded", () => {
     currentEditTxId = null; // Đánh dấu đang thêm mới, không phải sửa giao dịch cũ.
     const title = document.getElementById("tx-modal-title");
     if (title) title.innerText = "Thêm giao dịch mới"; // Đặt tiêu đề của bảng nhập.
-    document.getElementById("tx-amount").value = ""; // Xóa số tiền đã nhập từ lần trước.
+
+    const txAmount = document.getElementById("tx-amount");
+    const txCategory = document.getElementById("tx-category");
+    if (txAmount) {
+      txAmount.value = "";
+      txAmount.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+    }
+    if (txCategory) {
+      txCategory.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+    }
+
     document.getElementById("tx-desc").value = ""; // Xóa mô tả đã nhập từ lần trước.
     document.getElementById("tx-date").value = new Date()
       .toISOString()
@@ -908,8 +993,18 @@ document.addEventListener("layoutLoaded", () => {
     const title = document.getElementById("tx-modal-title");
     if (title) title.innerText = "Sửa giao dịch";
 
-    document.getElementById("tx-amount").value = tx.amount;
-    document.getElementById("tx-category").value = tx.category;
+    const txAmountInput = document.getElementById("tx-amount");
+    const txCategoryInput = document.getElementById("tx-category");
+
+    if (txAmountInput) {
+      txAmountInput.value = tx.amount ? new Intl.NumberFormat("en-US").format(tx.amount) : "";
+      txAmountInput.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+    }
+    if (txCategoryInput) {
+      txCategoryInput.value = tx.category;
+      txCategoryInput.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+    }
+
     document.getElementById("tx-desc").value = tx.description || "";
     document.getElementById("tx-date").value = new Date(tx.date)
       .toISOString()
@@ -938,7 +1033,8 @@ document.addEventListener("layoutLoaded", () => {
   };
 
   addTxBtns.forEach((btn) => btn.addEventListener("click", resetModalForAdd)); // Bấm nút Thêm giao dịch -> chuẩn bị form -> mở bảng.
-  closeBtns.forEach((btn) => btn.addEventListener("click", closeModal));
+  closeBtns.forEach((btn) => btn.addEventListener("click", () => closeModal()));
+  if (backdrop) backdrop.addEventListener("click", () => closeModal());
 
   // Nút chuyển đổi Thu nhập / Chi tiêu trong popup
   // Nút Thu đặt currentTxType = "THU", nút Chi đặt "CHI".
@@ -965,20 +1061,45 @@ document.addEventListener("layoutLoaded", () => {
     });
   }
 
+  // Định dạng số tiền có dấu phẩy khi gõ
+  const txAmountInput = document.getElementById("tx-amount");
+  if (txAmountInput) {
+    txAmountInput.addEventListener("input", (e) => {
+      let value = e.target.value.replace(/[^\d]/g, "");
+      if (value) {
+        e.target.value = new Intl.NumberFormat("en-US").format(parseInt(value, 10));
+      } else {
+        e.target.value = "";
+      }
+    });
+  }
+
   // THEM GD KHI BAM LUU//
   if (saveBtn) { // Chỉ xử lý khi nút lưu tồn tại
     saveBtn.addEventListener("click", async () => { // Xử lý sự kiện khi nhấn nút Lưu
-      const amount = document.getElementById("tx-amount").value; // Lấy số tiền từ ô nhập liệu
+      const amountRaw = document.getElementById("tx-amount").value; // Lấy số tiền từ ô nhập liệu
+      const amount = amountRaw ? parseFloat(amountRaw.replace(/,/g, "")) : 0; // Bỏ dấu phẩy
       const category = document.getElementById("tx-category").value; // Lấy danh mục từ ô nhập liệu
       const date = document.getElementById("tx-date").value; // Lấy ngày từ ô nhập liệu
       const desc = document.getElementById("tx-desc").value; // Lấy mô tả từ ô nhập liệu
 
+      const txCategoryInput = document.getElementById("tx-category");
+      const txAmountInputRef = document.getElementById("tx-amount");
+
+      // Reset border
+      txCategoryInput.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+      txAmountInputRef.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+
       if (txCategorySelect.disabled || !category) {
+        txCategoryInput.classList.add("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+        txCategoryInput.focus();
         showToast("Vui lòng chọn danh mục hợp lệ", "error");
         return;
       }
 
       if (!amount || amount <= 0) { // Kiểm tra số tiền hợp lệ
+        txAmountInputRef.classList.add("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
+        txAmountInputRef.focus();
         showToast("Vui lòng nhập số tiền hợp lệ", "error");
         return;
       }
@@ -988,7 +1109,7 @@ document.addEventListener("layoutLoaded", () => {
       try {
         if (currentEditTxId) {
           await apiUpdateTransaction(currentEditTxId, {
-            amount: parseFloat(amount), // Chuyển số tiền sang dạng số//
+            amount: amount, // Chuyển số tiền sang dạng số//
             type: currentTxType,
             category: category,
             description: desc,
@@ -997,7 +1118,7 @@ document.addEventListener("layoutLoaded", () => {
           showToast("Sửa giao dịch thành công!");
         } else {
           await apiCreateTransaction({
-            amount: parseFloat(amount), // Chuyển số tiền sang dạng số
+            amount: amount, // Chuyển số tiền sang dạng số
             type: currentTxType, // Sử dụng loại giao dịch hiện tại
             category: category,
             description: desc,
@@ -1006,7 +1127,7 @@ document.addEventListener("layoutLoaded", () => {
           showToast("Thêm giao dịch thành công!");
         }
 
-        closeModal(); // Đóng popup sau khi thêm/sửa thành công
+        closeModal(true); // Đóng popup sau khi thêm/sửa thành công
 
         // Tải lại danh sách giao dịch của trang hiện tại (nếu có)
         renderTransactions();
@@ -1115,13 +1236,21 @@ document.addEventListener("layoutLoaded", () => {
     const drawLineChart = async (period) => {
       try {
         let labels, thuData, chiData;
-        if (period === "6m") {
-          const rows = await apiGetMonthlyTrend(6);
+        if (period.endsWith("m")) {
+          const m = parseInt(period.replace("m", ""), 10);
+          const rows = await apiGetMonthlyTrend(m);
+          labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
+          thuData = rows.map((r) => r.thu);
+          chiData = rows.map((r) => r.chi);
+        } else if (period.startsWith("year-")) {
+          // Fake 12 months for the selected year
+          const rows = await apiGetMonthlyTrend(12);
           labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
           thuData = rows.map((r) => r.thu);
           chiData = rows.map((r) => r.chi);
         } else {
-          const rows = await apiGetDailyTrend(parseInt(period, 10));
+          // Specific month (YYYY-MM), mock daily data for that month
+          const rows = await apiGetDailyTrend(30);
           labels = rows.map(
             (r) => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}`,
           );
@@ -1174,10 +1303,28 @@ document.addEventListener("layoutLoaded", () => {
 
     const periodSelect = document.getElementById("trend-period");
     if (periodSelect) {
-      drawLineChart(periodSelect.value || "30");
-      periodSelect.addEventListener("change", () =>
-        drawLineChart(periodSelect.value),
-      );
+      periodSelect.innerHTML = "";
+
+      const now = new Date();
+
+      // Add 'Năm nay', 'Năm trước'
+      const thisYear = now.getFullYear();
+      periodSelect.innerHTML += `<option value="year-${thisYear}">Năm ${thisYear}</option>`;
+      periodSelect.innerHTML += `<option value="year-${thisYear - 1}">Năm ${thisYear - 1}</option>`;
+
+      // Add 12 specific months
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        periodSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
+      }
+
+      // Select current month by default
+      const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      periodSelect.value = currentMonthVal;
+
+      drawLineChart(periodSelect.value);
+      periodSelect.addEventListener("change", () => drawLineChart(periodSelect.value));
     }
 
     // Biểu đồ tròn: chi tiêu theo danh mục (màu khớp bảng màu danh mục chung)
@@ -1277,31 +1424,74 @@ document.addEventListener("layoutLoaded", () => {
           </div>
         </div>`;
     };
+    let allBudgets = [];
+    const filterBtn = document.getElementById("budget-filter-btn");
+    const filterPanel = document.getElementById("budget-filter-panel");
+    const categorySelect = document.getElementById("budget-filter-category");
+    const clearBtn = document.getElementById("budget-filter-clear-btn");
+
+    const applyFilter = () => {
+      let items = allBudgets;
+      if (categorySelect && categorySelect.value) {
+        items = items.filter(b => b.category === categorySelect.value);
+      }
+
+      listEl.innerHTML =
+        items.map(renderBudgetCard).join("") ||
+        '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có ngân sách nào cho tháng này.</p>';
+      renderIcons(listEl);
+
+      listEl.querySelectorAll(".delete-budget-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Xoá ngân sách này?")) return;
+          try {
+            await apiDeleteBudget(btn.dataset.id);
+            showToast("Đã xóa ngân sách.");
+            renderBudgets();
+            refreshNotifications();
+          } catch (error) {
+            showToast(error.message, "error");
+          }
+        });
+      });
+    };
+
+    const fillFilterCategoryOptions = () => {
+      if (!categorySelect) return;
+      const cats = [...new Set(allBudgets.map((b) => b.category))].filter(Boolean).sort();
+      const current = categorySelect.value;
+      categorySelect.innerHTML =
+        '<option value="">Tất cả danh mục</option>' +
+        cats.map((c) => `<option value="${c}">${c}</option>`).join("");
+      categorySelect.value = current;
+    };
+
+    if (filterBtn && filterPanel) {
+      filterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        filterPanel.classList.toggle("hidden");
+      });
+      document.addEventListener("click", (e) => {
+        if (!filterPanel.classList.contains("hidden") && !filterPanel.contains(e.target) && e.target !== filterBtn && !filterBtn.contains(e.target)) {
+          filterPanel.classList.add("hidden");
+        }
+      });
+    }
+
+    if (categorySelect) categorySelect.addEventListener("change", applyFilter);
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (categorySelect) categorySelect.value = "";
+        applyFilter();
+      });
+    }
+
     // 33333.sau khi tạo ns done//
     const renderBudgets = async () => {
       try {
-        const items = await apiGetBudgets();
-        // Chuyển từng ngân sách thành thẻ HTML rồi ghép lại
-        // Nếu không có ngân sách, hiển thị thông báo hướng dẫn
-        listEl.innerHTML =
-          items.map(renderBudgetCard).join("") ||
-          '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có ngân sách nào cho tháng này. Bấm "Thêm ngân sách" để bắt đầu!</p>';
-        renderIcons(listEl);
-        // Tìm tất cả nút xóa ngân sách//
-        listEl.querySelectorAll(".delete-budget-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            if (!confirm("Xoá ngân sách này?")) return;
-            try {
-              // Gửi yêu cầu xóa ngân sách theo ID lưu trong data-id
-              await apiDeleteBudget(btn.dataset.id);
-              showToast("Đã xóa ngân sách.");
-              renderBudgets();
-              refreshNotifications();
-            } catch (error) {
-              showToast(error.message, "error");
-            }
-          });
-        });
+        allBudgets = await apiGetBudgets();
+        fillFilterCategoryOptions();
+        applyFilter();
       } catch (error) {
         showToast(error.message, "error");
       }
@@ -1711,97 +1901,6 @@ document.addEventListener("layoutLoaded", () => {
         searchTimer = setTimeout(() => renderUsers(e.target.value.trim()), 300);
       });
 
-    // ---- Quản lý danh mục toàn hệ thống ----
-    const catsTbody = document.getElementById("admin-cats-tbody");
-
-    const renderCats = async () => {
-      try {
-        const cats = await apiAdminGetCategories();
-        catsTbody.innerHTML = cats
-          .map((c) => {
-            const typeLabel =
-              { CHI: "Chi tiêu", THU: "Thu nhập", BOTH: "Cả hai" }[c.type] ||
-              c.type;
-            return `
-            <tr class="hover:bg-slate-50">
-              <td class="px-5 py-3">
-                <div class="flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full" style="background:${c.color}"></span>
-                  <span class="font-medium text-slate-900">${c.name}</span>
-                  <i data-icon="${c.icon}" class="w-4 h-4 text-slate-400"></i>
-                </div>
-              </td>
-              <td class="px-5 py-3 text-slate-500">${typeLabel}</td>
-              <td class="px-5 py-3 text-right space-x-2">
-                <button class="rename-cat-btn text-xs text-blue-600 hover:underline font-medium" data-id="${c.id}" data-name="${c.name}">Đổi tên</button>
-                <button class="delete-cat-btn text-xs text-rose-500 hover:underline font-medium" data-id="${c.id}" data-name="${c.name}">Xoá</button>
-              </td>
-            </tr>`;
-          })
-          .join("");
-        renderIcons(catsTbody);
-
-        catsTbody.querySelectorAll(".rename-cat-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            const newName = prompt("Tên mới cho danh mục:", btn.dataset.name);
-            if (!newName || newName.trim() === btn.dataset.name) return;
-            try {
-              await apiAdminUpdateCategory(btn.dataset.id, {
-                name: newName.trim(),
-              });
-              showToast("Đã đổi tên danh mục.");
-              renderCats();
-            } catch (error) {
-              showToast(error.message, "error");
-            }
-          });
-        });
-
-        catsTbody.querySelectorAll(".delete-cat-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            if (
-              !confirm(
-                `Xoá danh mục "${btn.dataset.name}"? Giao dịch cũ vẫn giữ nguyên tên danh mục.`,
-              )
-            )
-              return;
-            try {
-              await apiAdminDeleteCategory(btn.dataset.id);
-              showToast("Đã xóa danh mục.");
-              renderCats();
-            } catch (error) {
-              showToast(error.message, "error");
-            }
-          });
-        });
-      } catch (error) {
-        showToast(error.message, "error");
-      }
-    };
-    renderCats();
-
-    document
-      .getElementById("add-cat-btn")
-      ?.addEventListener("click", async () => {
-        const name = document.getElementById("cat-name").value.trim();
-        const type = document.getElementById("cat-type").value;
-        const icon =
-          document.getElementById("cat-icon").value.trim() || "more-horizontal";
-        const color = document.getElementById("cat-color").value;
-        if (!name) {
-          showToast("Vui lòng nhập tên danh mục", "error");
-          return;
-        }
-
-        try {
-          await apiAdminCreateCategory({ name, type, icon, color });
-          document.getElementById("cat-name").value = "";
-          showToast("Thêm danh mục thành công!");
-          renderCats();
-        } catch (error) {
-          showToast(error.message, "error");
-        }
-      });
 
     // ---- Cấu hình AI ----
     const loadAiSettings = async () => {
@@ -1890,33 +1989,80 @@ document.addEventListener("layoutLoaded", () => {
       }
     }
 
+    let allItems = [];
+    const filterBtn = document.getElementById("fixed-filter-btn");
+    const filterPanel = document.getElementById("fixed-filter-panel");
+    const categorySelect = document.getElementById("fixed-filter-category");
+    const clearBtn = document.getElementById("fixed-filter-clear-btn");
+
+    const renderList = (items) => {
+      let total = items.reduce((sum, i) => sum + i.amount, 0);
+      const totalEl = document.getElementById("fixed-expense-total");
+      if (totalEl) totalEl.textContent = formatCurrency(total);
+
+      listEl.innerHTML =
+        items.map(renderCard).join("") ||
+        '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào.</p>';
+      renderIcons(listEl);
+
+      listEl.querySelectorAll(".delete-fixed-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Xoá khoản chi cố định này?")) return;
+          try {
+            await apiDeleteFixedExpense(btn.dataset.id);
+            showToast("Đã xóa khoản chi cố định.");
+            loadData();
+          } catch (error) {
+            showToast(error.message, "error");
+          }
+        });
+      });
+    };
+
+    const applyFilter = () => {
+      let items = allItems;
+      if (categorySelect && categorySelect.value) {
+        items = items.filter(i => i.category === categorySelect.value);
+      }
+      renderList(items);
+    };
+
+    const fillCategoryOptions = () => {
+      if (!categorySelect) return;
+      const cats = [...new Set(allItems.map((i) => i.category))].filter(Boolean).sort();
+      const current = categorySelect.value;
+      categorySelect.innerHTML =
+        '<option value="">Tất cả danh mục</option>' +
+        cats.map((c) => `<option value="${c}">${c}</option>`).join("");
+      categorySelect.value = current;
+    };
+
+    if (filterBtn && filterPanel) {
+      filterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        filterPanel.classList.toggle("hidden");
+      });
+      document.addEventListener("click", (e) => {
+        if (!filterPanel.classList.contains("hidden") && !filterPanel.contains(e.target) && e.target !== filterBtn && !filterBtn.contains(e.target)) {
+          filterPanel.classList.add("hidden");
+        }
+      });
+    }
+
+    if (categorySelect) categorySelect.addEventListener("change", applyFilter);
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (categorySelect) categorySelect.value = "";
+        applyFilter();
+      });
+    }
+
     // Gọi GET /api/fixed-expenses, tính tổng dự kiến mỗi tháng và dựng danh sách thẻ.
     const loadData = async () => {
       try {
-        const items = await apiGetFixedExpenses();
-        // Đây là tổng các lịch chi, không nhất thiết là số tiền đã thanh toán.
-        let total = items.reduce((sum, i) => sum + i.amount, 0);
-        const totalEl = document.getElementById("fixed-expense-total");
-        if (totalEl) totalEl.textContent = formatCurrency(total);
-
-        listEl.innerHTML =
-          items.map(renderCard).join("") ||
-          '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào. Bấm "Thêm chi cố định" để bắt đầu!</p>';
-        renderIcons(listEl);
-
-        // Sau khi dựng thẻ, gắn sự kiện xóa cho từng nút dựa trên id của lịch chi.
-        listEl.querySelectorAll(".delete-fixed-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            if (!confirm("Xoá khoản chi cố định này?")) return;
-            try {
-              await apiDeleteFixedExpense(btn.dataset.id);
-              showToast("Đã xóa khoản chi cố định.");
-              loadData();
-            } catch (error) {
-              showToast(error.message, "error");
-            }
-          });
-        });
+        allItems = await apiGetFixedExpenses();
+        fillCategoryOptions();
+        applyFilter();
       } catch (error) {
         showToast(error.message, "error");
       }

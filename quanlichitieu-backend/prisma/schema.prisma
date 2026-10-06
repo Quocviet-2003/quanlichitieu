@@ -19,7 +19,6 @@ model User {
   avatar       String?
   role         String        @default("USER") // 'USER' | 'ADMIN'
   status       String        @default("ACTIVE") // 'ACTIVE' | 'BLOCKED'
-  walletBalance Float         @default(0) // Số dư ví: nạp tiền vào đây
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -27,48 +26,11 @@ model User {
   budgets      Budget[]
   savingsGoals SavingsGoal[]
   aiLogs       AiLog[]
-  walletLogs   WalletLog[]
-  paymentOrders PaymentOrder[]
   fixedExpenses FixedExpense[]
   notifications Notification[]
 }
 
-// ==============================
-// LỊCH SỬ BIẾN ĐỘNG VÍ TIỀN (nạp tiền)
-// ==============================
-model WalletLog {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String   @db.ObjectId
-  type         String   // 'DEPOSIT' (nạp tiền)
-  amount       Float    // Luôn là số dương, chiều ghi chú trong type
-  balanceAfter Float    // Số dư ví sau biến động (đối chiếu dễ dàng)
-  note         String?
-  createdAt    DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-}
-
-// ==============================
-// ĐƠN THANH TOÁN NẠP TIỀN (mô phỏng cổng payment gateway)
-// Tạo đơn -> khách trả tiền theo hướng dẫn -> xác nhận -> tiền về ví
-// ==============================
-model PaymentOrder {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String    @db.ObjectId
-  orderCode String    @unique // Mã đơn hiển thị nội dung chuyển khoản, VD: MT16900000001234
-  amount    Float
-  method    String    // 'BANK' | 'CARD' | 'MOMO'
-  status    String    @default("PENDING") // 'PENDING'|'PAID'|'CANCELLED'|'EXPIRED'
-  expiresAt DateTime // Hết hạn sau 15 phút không thanh toán
-  paidAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-}
 
 // ==============================
 // GIAO DỊCH THU / CHI
