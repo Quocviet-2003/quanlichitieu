@@ -1506,13 +1506,6 @@ document.addEventListener("layoutLoaded", () => {
     const monthSelect = document.getElementById("budget-month-select");
     if (monthSelect) {
       const now = new Date();
-      // Add 'Năm nay', 'Năm trước' - wait, budget is by month, so just add months!
-      monthSelect.innerHTML = "";
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
-      }
       const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       monthSelect.value = currentMonthVal;
 
