@@ -5,10 +5,10 @@
 //
 // Cách chạy app:
 //   cd quanlichitieu-backend && npm run dev
-//   -> Mở http://localhost:3001 (backend tự phục vụ luôn giao diện này,
+//   -> Mở http://localhost:3000 (backend tự phục vụ luôn giao diện này,
 //      nhờ vậy các fetch() tương đối "/api/..." đi thẳng vào API, khỏi lo CORS).
 // Nếu bạn mở giao diện bằng server khác, hãy đổi API_BASE bên dưới
-// thành địa chỉ backend, ví dụ: const API_BASE = 'http://localhost:3001';
+// thành địa chỉ backend, ví dụ: const API_BASE = 'http://localhost:3000';
 
 const API_BASE = ''; // Để trống = cùng origin với trang hiện tại
 
@@ -137,7 +137,6 @@ async function apiDeleteBudget(id) {
 
 // --- CHI CỐ ĐỊNH HÀNG THÁNG (fixed-expenses.html) ---
 
-
 // Mỗi phần tử có dạng: { id, category, description, amount, deductDay, lastDeducted }
 async function apiGetFixedExpenses() {
   return apiFetch('/api/fixed-expenses');
@@ -257,7 +256,6 @@ async function apiAdminGetStats() {
   return apiFetch('/api/admin/stats');
 }
 
-
 async function apiAdminGetAiSettings() {
   return apiFetch('/api/admin/ai-settings');
 }
@@ -282,5 +280,20 @@ async function apiChangePassword(oldPassword, newPassword) {
   return apiFetch('/api/auth/password', {
     method: 'PUT',
     body: JSON.stringify({ oldPassword, newPassword })
+  });
+}
+
+// --- MOCK AI INSIGHTS & CHAT (Fallback nếu backend chưa hỗ trợ Markdown hoàn chỉnh) ---
+async function apiGetAiInsight(summaryText) {
+  return apiFetch('/api/ai/insight', {
+    method: 'POST',
+    body: JSON.stringify({ summary: summaryText })
+  });
+}
+
+async function apiChatWithAi(question, history, summaryText) {
+  return apiFetch('/api/ai/chat', {
+    method: 'POST',
+    body: JSON.stringify({ question, history, summary: summaryText })
   });
 }

@@ -1,6 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Khởi tạo Prisma để thao tác với Database
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    },
+  },
+});
 
 module.exports = prisma;

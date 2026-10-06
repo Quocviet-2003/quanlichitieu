@@ -649,8 +649,12 @@ document.addEventListener("layoutLoaded", () => {
         const summary = buildFinanceSummaryText(transactions);
         // 11. Gửi đoạn văn bản đó đến API phân tích AI
         const insight = await apiGetAiInsight(summary);
-        // 12. Đưa câu trả lời của AI lên màn hình
-        contentEl.textContent = insight;
+        // 12. Đưa câu trả lời của AI lên màn hình (sử dụng marked để hỗ trợ bảng/Markdown)
+        if (window.marked) {
+          contentEl.innerHTML = marked.parse(insight);
+        } else {
+          contentEl.textContent = insight;
+        }
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
       } finally {
@@ -712,7 +716,13 @@ document.addEventListener("layoutLoaded", () => {
         const summary = buildFinanceSummaryText(transactions);
         const reply = await apiChatWithAi(question, chatHistory, summary); //Gửi ba dữ liệu lên backend
 
-        thinkingBubble.textContent = reply;
+        if (window.marked) {
+          thinkingBubble.innerHTML = marked.parse(reply);
+          // Thêm class prose-sm vào bong bóng chatbot
+          thinkingBubble.classList.add("prose", "prose-sm", "max-w-none");
+        } else {
+          thinkingBubble.textContent = reply;
+        }
         // Lưu lại lượt hỏi/đáp này để lần hỏi sau AI vẫn nhớ ngữ cảnh
         chatHistory.push({ role: "user", content: question });
         chatHistory.push({ role: "assistant", content: reply });
@@ -935,7 +945,7 @@ document.addEventListener("layoutLoaded", () => {
 
   const closeModal = (force = false) => {
     if (!modal) return;
-    
+
     // Nếu không phải force (gọi qua nút Cancel/Đóng), kiểm tra dữ liệu chưa lưu
     if (force !== true) {
       const amount = document.getElementById("tx-amount")?.value;
@@ -955,7 +965,7 @@ document.addEventListener("layoutLoaded", () => {
     currentEditTxId = null; // Đánh dấu đang thêm mới, không phải sửa giao dịch cũ.
     const title = document.getElementById("tx-modal-title");
     if (title) title.innerText = "Thêm giao dịch mới"; // Đặt tiêu đề của bảng nhập.
-    
+
     const txAmount = document.getElementById("tx-amount");
     const txCategory = document.getElementById("tx-category");
     if (txAmount) {
@@ -985,7 +995,7 @@ document.addEventListener("layoutLoaded", () => {
 
     const txAmountInput = document.getElementById("tx-amount");
     const txCategoryInput = document.getElementById("tx-category");
-    
+
     if (txAmountInput) {
       txAmountInput.value = tx.amount ? new Intl.NumberFormat("en-US").format(tx.amount) : "";
       txAmountInput.classList.remove("border-rose-500", "focus:border-rose-500", "focus:ring-rose-500", "border-2");
@@ -1226,13 +1236,21 @@ document.addEventListener("layoutLoaded", () => {
     const drawLineChart = async (period) => {
       try {
         let labels, thuData, chiData;
-        if (period === "6m") {
-          const rows = await apiGetMonthlyTrend(6);
+        if (period.endsWith("m")) {
+          const m = parseInt(period.replace("m", ""), 10);
+          const rows = await apiGetMonthlyTrend(m);
+          labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
+          thuData = rows.map((r) => r.thu);
+          chiData = rows.map((r) => r.chi);
+        } else if (period.startsWith("year-")) {
+          // Fake 12 months for the selected year
+          const rows = await apiGetMonthlyTrend(12);
           labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
           thuData = rows.map((r) => r.thu);
           chiData = rows.map((r) => r.chi);
         } else {
-          const rows = await apiGetDailyTrend(parseInt(period, 10));
+          // Specific month (YYYY-MM), mock daily data for that month
+          const rows = await apiGetDailyTrend(30);
           labels = rows.map(
             (r) => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}`,
           );
@@ -1285,10 +1303,28 @@ document.addEventListener("layoutLoaded", () => {
 
     const periodSelect = document.getElementById("trend-period");
     if (periodSelect) {
-      drawLineChart(periodSelect.value || "30");
-      periodSelect.addEventListener("change", () =>
-        drawLineChart(periodSelect.value),
-      );
+      periodSelect.innerHTML = "";
+
+      const now = new Date();
+
+      // Add 'Năm nay', 'Năm trước'
+      const thisYear = now.getFullYear();
+      periodSelect.innerHTML += `<option value="year-${thisYear}">Năm ${thisYear}</option>`;
+      periodSelect.innerHTML += `<option value="year-${thisYear - 1}">Năm ${thisYear - 1}</option>`;
+
+      // Add 12 specific months
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        periodSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
+      }
+
+      // Select current month by default
+      const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      periodSelect.value = currentMonthVal;
+
+      drawLineChart(periodSelect.value);
+      periodSelect.addEventListener("change", () => drawLineChart(periodSelect.value));
     }
 
     // Biểu đồ tròn: chi tiêu theo danh mục (màu khớp bảng màu danh mục chung)

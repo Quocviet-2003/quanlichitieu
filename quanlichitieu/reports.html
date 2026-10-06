@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,24 +14,26 @@
 
         extend: {
           colors: {
-            slate: { 50:'#faf8f2', 100:'#f1ede2', 200:'#ddd6c6', 300:'#c8bfa9', 400:'#988f77', 500:'#7a715c', 600:'#5f5847', 700:'#4a4437', 800:'#33302a', 900:'#22201b' },
-            gray: { 100:'#efeadd', 200:'#ddd6c6' },
-            blue: { 50:'#e9f2ec', 200:'#bcd8c6', 400:'#4a8a68', 500:'#2f7050', 600:'#24593f', 700:'#1d4934' },
-            emerald: { 50:'#ecf3ea', 200:'#cadfce', 500:'#2f7050', 600:'#24593f' },
-            rose: { 50:'#f9ebe6', 100:'#f3dcd4', 200:'#f0cdc2', 400:'#cf6b52', 500:'#bc5539', 600:'#a34428' },
-            amber: { 50:'#faf1dc', 200:'#ecdcae', 400:'#d99e33', 500:'#c4871f', 600:'#a57218' },
-            purple: { 50:'#efeaf6', 600:'#6d5a8e' }
+            slate: { 50: '#faf8f2', 100: '#f1ede2', 200: '#ddd6c6', 300: '#c8bfa9', 400: '#988f77', 500: '#7a715c', 600: '#5f5847', 700: '#4a4437', 800: '#33302a', 900: '#22201b' },
+            gray: { 100: '#efeadd', 200: '#ddd6c6' },
+            blue: { 50: '#e9f2ec', 200: '#bcd8c6', 400: '#4a8a68', 500: '#2f7050', 600: '#24593f', 700: '#1d4934' },
+            emerald: { 50: '#ecf3ea', 200: '#cadfce', 500: '#2f7050', 600: '#24593f' },
+            rose: { 50: '#f9ebe6', 100: '#f3dcd4', 200: '#f0cdc2', 400: '#cf6b52', 500: '#bc5539', 600: '#a34428' },
+            amber: { 50: '#faf1dc', 200: '#ecdcae', 400: '#d99e33', 500: '#c4871f', 600: '#a57218' },
+            purple: { 50: '#efeaf6', 600: '#6d5a8e' }
           }
         }
       }
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- style.css: style nền chung. components.css: các class dùng chung (card, btn, nav-link...) -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
+
 <body class="antialiased font-sans flex flex-col md:flex-row min-h-screen relative">
 
   <!-- Nơi hiện thông báo (toast) góc phải màn hình -->
@@ -43,7 +46,7 @@
   <div class="flex-1 md:ml-64 flex flex-col min-h-screen pb-16 md:pb-0">
     <div id="layout-header"></div>
 
-      <!-- ====== NỘI DUNG TRANG THỐNG KÊ & BÁO CÁO ====== -->
+    <!-- ====== NỘI DUNG TRANG THỐNG KÊ & BÁO CÁO ====== -->
     <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
 
       <div class="mb-6">
@@ -105,7 +108,7 @@
             <span>Phân tích chi tiêu</span>
           </button>
         </div>
-        <div id="ai-insight-content" class="text-sm text-slate-500 whitespace-pre-line">
+        <div id="ai-insight-content" class="text-sm text-slate-700 prose prose-sm max-w-none">
           Bấm "Phân tích chi tiêu" để AI tổng hợp nhận xét dựa trên dữ liệu thu chi của bạn.
         </div>
       </div>
@@ -122,4 +125,5 @@
   <script src="js/layout.js"></script>
   <script src="js/main.js"></script>
 </body>
+
 </html>
