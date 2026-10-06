@@ -49,13 +49,19 @@
     <!-- ====== NỘI DUNG TRANG TỔNG QUAN (DASHBOARD) ====== -->
     <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
 
-      <!-- Lời chào -->
-      <div class="mb-8">
-        <h2 id="dashboard-greeting" class="text-2xl font-bold text-slate-900 mb-1">Xin chào</h2>
-        <p class="text-sm text-slate-500">Đây là tình hình tài chính của bạn trong tháng này.</p>
+      <!-- Lời chào và chọn ngày xem tổng quan -->
+      <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 id="dashboard-greeting" class="text-2xl font-bold text-slate-900 mb-1">Xin chào</h2>
+          <p class="text-sm text-slate-500">Đây là tình hình tài chính của bạn.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-slate-500 font-medium">Xem theo ngày:</span>
+          <input type="date" id="overview-date" class="form-input py-1.5 px-3 rounded-lg text-sm bg-white max-w-[150px]" />
+        </div>
       </div>
 
-      <!-- tạo 4 thẻ số liệu tổng quan: Số dư / Thu nhập / Chi tiêu / Tiết kiệm -->
+      <!-- tạo 4 thẻ số liệu tổng quan: Số dư / Thu / Chi / Tiết kiệm -->
       <div
         class="flex overflow-x-auto hide-scrollbar gap-4 md:grid md:grid-cols-4 md:gap-6 mb-8 pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         <!-- Số dư hiện tại -->
@@ -69,25 +75,25 @@
           <h3 id="stat-balance" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 
-        <!-- Tổng thu nhập -->
+        <!-- Thu nhập -->
         <div class="card min-w-[240px] md:min-w-0 p-5">
           <div class="flex justify-between items-start mb-3">
             <div class="stat-icon stat-icon-emerald">
               <i data-icon="arrow-down-left" class="w-5 h-5"></i>
             </div>
           </div>
-          <p class="text-sm font-medium text-slate-500 mb-1">Tổng thu nhập</p>
+          <p class="text-sm font-medium text-slate-500 mb-1">Thu nhập</p>
           <h3 id="stat-income" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 
-        <!-- Tổng chi tiêu -->
+        <!-- Chi tiêu -->
         <div class="card min-w-[240px] md:min-w-0 p-5">
           <div class="flex justify-between items-start mb-3">
             <div class="stat-icon stat-icon-rose">
               <i data-icon="arrow-up-right" class="w-5 h-5"></i>
             </div>
           </div>
-          <p class="text-sm font-medium text-slate-500 mb-1">Tổng chi tiêu</p>
+          <p class="text-sm font-medium text-slate-500 mb-1">Chi tiêu</p>
           <h3 id="stat-expense" class="text-2xl font-bold text-slate-900 truncate">...</h3>
         </div>
 

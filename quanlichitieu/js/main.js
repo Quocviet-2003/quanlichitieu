@@ -1214,20 +1214,33 @@ document.addEventListener("layoutLoaded", () => {
       /* localStorage trống/hỏng thì giữ lời chào mặc định */
     }
 
-    // 4 thẻ số liệu lấy từ API thống kê tổng quan
-    apiGetStatsSummary()
-      .then((s) => {
-        balanceEl.textContent = formatCurrency(s.balance);
-        const incomeEl = document.getElementById("stat-income");
-        const expenseEl = document.getElementById("stat-expense");
-        const savingsEl = document.getElementById("stat-savings");
-        if (incomeEl)
-          incomeEl.textContent = `+${formatCurrency(s.totalIncome)}`;
-        if (expenseEl)
-          expenseEl.textContent = `-${formatCurrency(s.totalExpense)}`;
-        if (savingsEl) savingsEl.textContent = formatCurrency(s.totalSavings);
-      })
-      .catch((error) => showToast(error.message, "error"));
+    const overviewDateInput = document.getElementById("overview-date");
+    if (overviewDateInput && !overviewDateInput.value) {
+      const today = new Date();
+      overviewDateInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    const loadStatsSummary = () => {
+      const dVal = overviewDateInput ? overviewDateInput.value : null;
+      apiGetStatsSummary(dVal)
+        .then((s) => {
+          balanceEl.textContent = formatCurrency(s.balance);
+          const incomeEl = document.getElementById("stat-income");
+          const expenseEl = document.getElementById("stat-expense");
+          const savingsEl = document.getElementById("stat-savings");
+          if (incomeEl)
+            incomeEl.textContent = `+${formatCurrency(s.periodIncome)}`;
+          if (expenseEl)
+            expenseEl.textContent = `-${formatCurrency(s.periodExpense)}`;
+          if (savingsEl) savingsEl.textContent = formatCurrency(s.totalSavings);
+        })
+        .catch((error) => showToast(error.message, "error"));
+    };
+
+    loadStatsSummary();
+    if (overviewDateInput) {
+      overviewDateInput.addEventListener("change", loadStatsSummary);
+    }
 
     // Biểu đồ đường: 7/30 ngày gần nhất hoặc 6 tháng (theo ô chọn kỳ)
     const lineCanvas = document.getElementById("lineChart");

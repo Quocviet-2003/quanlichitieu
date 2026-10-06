@@ -8,14 +8,23 @@
 const prisma = require('../config/db');
 const { asyncHandler, assert, monthRange, currentMonth, monthKey, dayKeyOf } = require('../utils/helpers');
 
-// GET /api/stats/summary :
+// GET /api/stats/summary?date=YYYY-MM-DD :
 exports.getSummary = asyncHandler(async (req, res) => {
-  // B1. start là đầu tháng này, end là đầu tháng sau; dùng date >= start và date < end.
-  const { start, end } = monthRange(currentMonth());
+  // Nếu có date, dùng ngày đó. Nếu không có, dùng toàn bộ tháng hiện tại.
+  let start, end;
+  const queryDate = req.query.date;
+  if (queryDate) {
+    const d = new Date(`${queryDate}T00:00:00.000Z`);
+    start = new Date(d);
+    end = new Date(d);
+    end.setUTCDate(end.getUTCDate() + 1);
+  } else {
+    const range = monthRange(currentMonth());
+    start = range.start;
+    end = range.end;
+  }
 
-
-
-  const [incomeAgg, expenseAgg, savingsAgg, monthIncomeAgg, monthExpenseAgg, txCount] =
+  const [incomeAgg, expenseAgg, savingsAgg, periodIncomeAgg, periodExpenseAgg, txCount] =
     await Promise.all([
       // 1. Tổng tiền THU từ trước đến nay.
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'THU' } }),
@@ -23,12 +32,12 @@ exports.getSummary = asyncHandler(async (req, res) => {
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'CHI' } }),
       // 3. Tổng số tiền hiện có trong các mục tiêu tiết kiệm.
       prisma.savingsGoal.aggregate({ _sum: { currentAmount: true }, where: { userId: req.userId } }),
-      // 4. Tổng tiền THU chỉ trong tháng hiện tại.
+      // 4. Tổng tiền THU trong khoảng thời gian đã chọn (ngày hoặc tháng).
       prisma.transaction.aggregate({
         _sum: { amount: true },
         where: { userId: req.userId, type: 'THU', date: { gte: start, lt: end } },
       }),
-      // 5. Tổng tiền CHI chỉ trong tháng hiện tại.
+      // 5. Tổng tiền CHI trong khoảng thời gian đã chọn.
       prisma.transaction.aggregate({
         _sum: { amount: true },
         where: { userId: req.userId, type: 'CHI', date: { gte: start, lt: end } },
@@ -37,18 +46,16 @@ exports.getSummary = asyncHandler(async (req, res) => {
       prisma.transaction.count({ where: { userId: req.userId } }),
     ]);
 
-  // B3. Trích xuất tổng thu và tổng chi (nếu null/không có thì gán mặc định là 0)
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
 
-  // B4. Trả JSON cho Dashboard; số dư = tổng thu - tổng chi, không trừ tiền tiết kiệm.
   res.json({
-    balance: totalIncome - totalExpense, // Số dư hiện tại
+    balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
     totalSavings: savingsAgg._sum.currentAmount || 0,
-    monthIncome: monthIncomeAgg._sum.amount || 0,
-    monthExpense: monthExpenseAgg._sum.amount || 0,
+    periodIncome: periodIncomeAgg._sum.amount || 0,
+    periodExpense: periodExpenseAgg._sum.amount || 0,
     currentMonth: currentMonth(),
     transactionCount: txCount,
   });

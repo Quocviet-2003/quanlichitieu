@@ -217,9 +217,10 @@ async function apiGetCategories() {
   return apiFetch('/api/categories');
 }
 
-// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, monthIncome, monthExpense, ... }
-async function apiGetStatsSummary() {
-  return apiFetch('/api/stats/summary');
+// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
+async function apiGetStatsSummary(date = null) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  return apiFetch(`/api/stats/summary${query}`);
 }
 
 // Thu/chi theo tháng (mặc định 6 tháng): [{ month: 'YYYY-MM', thu, chi }]
