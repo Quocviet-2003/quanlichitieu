@@ -141,22 +141,40 @@ exports.getCategoryBreakdown = asyncHandler(async (req, res) => {
 
 // GET /api/stats/trend?days=30 : Thống kê xu hướng thu và chi theo từng ngày
 exports.getDailyTrend = asyncHandler(async (req, res) => {
-  // B1. Đọc số ngày từ URL; không gửi thì lấy mặc định 30 ngày
-  let days = parseInt(req.query.days, 10);
-  if (!Number.isFinite(days)) days = 30;
-  assert(days >= 1 && days <= 365, 400, "'days' phải nằm trong khoảng 1 đến 365.");
+  // B1. Đọc số ngày hoặc ngày bắt đầu/kết thúc từ URL
+  let startDate = req.query.startDate;
+  let endDate = req.query.endDate;
+  let buckets = [];
+  let end;
 
-  // B2.  Tạo sẵn từng ngày từ cũ đến mới; mỗi ngày sẽ có thu và chi bằng 0
-  const buckets = [];
-  const todayUtcMidnight = new Date(`${dayKeyOf(new Date())}T00:00:00.000Z`);
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(todayUtcMidnight);
-    d.setUTCDate(d.getUTCDate() - i);
-    buckets.push({ key: dayKeyOf(d), start: d });
+  if (startDate && endDate) {
+    const startObj = new Date(`${startDate}T00:00:00.000Z`);
+    const endObj = new Date(`${endDate}T00:00:00.000Z`);
+    assert(startObj <= endObj, 400, "Ngày bắt đầu không được lớn hơn ngày kết thúc.");
+    assert((endObj - startObj) / (1000 * 60 * 60 * 24) <= 365, 400, "Khoảng thời gian không được vượt quá 365 ngày.");
+
+    const diffDays = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24));
+    for (let i = 0; i <= diffDays; i++) {
+      const d = new Date(startObj);
+      d.setUTCDate(d.getUTCDate() + i);
+      buckets.push({ key: dayKeyOf(d), start: d });
+    }
+    end = new Date(endObj);
+    end.setUTCDate(end.getUTCDate() + 1);
+  } else {
+    let days = parseInt(req.query.days, 10);
+    if (!Number.isFinite(days)) days = 30;
+    assert(days >= 1 && days <= 365, 400, "'days' phải nằm trong khoảng 1 đến 365.");
+
+    const todayUtcMidnight = new Date(`${dayKeyOf(new Date())}T00:00:00.000Z`);
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(todayUtcMidnight);
+      d.setUTCDate(d.getUTCDate() - i);
+      buckets.push({ key: dayKeyOf(d), start: d });
+    }
+    end = new Date(todayUtcMidnight);
+    end.setUTCDate(end.getUTCDate() + 1);
   }
-  // Mốc kết thúc là đầu ngày mai để lấy trọn giao dịch hôm nay
-  const end = new Date(todayUtcMidnight);
-  end.setUTCDate(end.getUTCDate() + 1);
 
   // B3. Lấy giao dịch của người dùng trong khoảng ngày cần thống kê
   const transactions = await prisma.transaction.findMany({

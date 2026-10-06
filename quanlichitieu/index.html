@@ -109,10 +109,11 @@
         <div class="card lg:col-span-2 p-5 md:p-6">
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-base font-semibold text-slate-900">Tổng quan chi tiêu</h3>
-            <select id="trend-period"
-              class="text-sm border border-gray-200 bg-slate-50 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 text-slate-600">
-              <!-- Danh sách tháng và năm sẽ được JS tự động điền vào đây -->
-            </select>
+            <div class="flex items-center gap-2">
+              <input type="date" id="trend-start-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
+              <span class="text-slate-400">-</span>
+              <input type="date" id="trend-end-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
+            </div>
           </div>
           <div class="h-64 w-full relative">
             <canvas id="lineChart"></canvas>

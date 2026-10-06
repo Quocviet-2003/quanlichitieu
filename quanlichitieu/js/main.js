@@ -1233,30 +1233,18 @@ document.addEventListener("layoutLoaded", () => {
     const lineCanvas = document.getElementById("lineChart");
     let lineChart = null;
 
-    const drawLineChart = async (period) => {
+    const drawLineChart = async (startDate, endDate) => {
       try {
         let labels, thuData, chiData;
-        if (period.endsWith("m")) {
-          const m = parseInt(period.replace("m", ""), 10);
-          const rows = await apiGetMonthlyTrend(m);
-          labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
-          thuData = rows.map((r) => r.thu);
-          chiData = rows.map((r) => r.chi);
-        } else if (period.startsWith("year-")) {
-          // Fake 12 months for the selected year
-          const rows = await apiGetMonthlyTrend(12);
-          labels = rows.map((r) => `T${parseInt(r.month.split("-")[1], 10)}`);
-          thuData = rows.map((r) => r.thu);
-          chiData = rows.map((r) => r.chi);
-        } else {
-          // Specific month (YYYY-MM), mock daily data for that month
-          const rows = await apiGetDailyTrend(30);
-          labels = rows.map(
-            (r) => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}`,
-          );
-          thuData = rows.map((r) => r.thu);
-          chiData = rows.map((r) => r.chi);
-        }
+
+        // Specific date range
+        const rows = await apiGetDailyTrend(30, startDate, endDate);
+        labels = rows.map(
+          (r) => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}`,
+        );
+        thuData = rows.map((r) => r.thu);
+        chiData = rows.map((r) => r.chi);
+
         if (!window.Chart) return;
         if (lineChart) lineChart.destroy(); // vẽ lại thì xoá biểu đồ cũ
         lineChart = new Chart(lineCanvas, {
@@ -1301,30 +1289,35 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
 
-    const periodSelect = document.getElementById("trend-period");
-    if (periodSelect) {
-      periodSelect.innerHTML = "";
+    const startDateInput = document.getElementById("trend-start-date");
+    const endDateInput = document.getElementById("trend-end-date");
 
+    if (startDateInput && endDateInput) {
       const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // Add 'Năm nay', 'Năm trước'
-      const thisYear = now.getFullYear();
-      periodSelect.innerHTML += `<option value="year-${thisYear}">Năm ${thisYear}</option>`;
-      periodSelect.innerHTML += `<option value="year-${thisYear - 1}">Năm ${thisYear - 1}</option>`;
+      const fmtDate = (d) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
 
-      // Add 12 specific months
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        periodSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
-      }
+      startDateInput.value = fmtDate(firstDay);
+      endDateInput.value = fmtDate(now);
 
-      // Select current month by default
-      const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      periodSelect.value = currentMonthVal;
+      const handleChange = () => {
+        if (startDateInput.value && endDateInput.value) {
+          if (new Date(startDateInput.value) > new Date(endDateInput.value)) {
+            showToast("Ngày bắt đầu không được sau ngày kết thúc", "error");
+            startDateInput.value = endDateInput.value;
+            return;
+          }
+          drawLineChart(startDateInput.value, endDateInput.value);
+        }
+      };
 
-      drawLineChart(periodSelect.value);
-      periodSelect.addEventListener("change", () => drawLineChart(periodSelect.value));
+      startDateInput.addEventListener("change", handleChange);
+      endDateInput.addEventListener("change", handleChange);
+
+      drawLineChart(startDateInput.value, endDateInput.value);
     }
 
     // Biểu đồ tròn: chi tiêu theo danh mục (màu khớp bảng màu danh mục chung)
@@ -1487,16 +1480,36 @@ document.addEventListener("layoutLoaded", () => {
     }
 
     // 33333.sau khi tạo ns done//
-    const renderBudgets = async () => {
+    const renderBudgets = async (month) => {
       try {
-        allBudgets = await apiGetBudgets();
+        allBudgets = await apiGetBudgets(month);
         fillFilterCategoryOptions();
         applyFilter();
       } catch (error) {
         showToast(error.message, "error");
       }
     };
-    renderBudgets(); // Tải và hiển thị danh sách ngân sách ngay khi người dùng mở trang.
+
+    const monthSelect = document.getElementById("budget-month-select");
+    if (monthSelect) {
+      const now = new Date();
+      // Add 'Năm nay', 'Năm trước' - wait, budget is by month, so just add months!
+      monthSelect.innerHTML = "";
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
+      }
+      const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      monthSelect.value = currentMonthVal;
+
+      monthSelect.addEventListener("change", () => {
+        renderBudgets(monthSelect.value);
+      });
+      renderBudgets(monthSelect.value);
+    } else {
+      renderBudgets();
+    }
 
     // Tìm nút "Thêm ngân sách" theo id.
     document
@@ -1615,43 +1628,81 @@ document.addEventListener("layoutLoaded", () => {
         </div>`;
     };
 
+    let allSavingsGoals = [];
+
+    const applySavingsFilter = () => {
+      const statusSelect = document.getElementById("savings-status-filter");
+      const deadlineStart = document.getElementById("savings-deadline-start");
+      const deadlineEnd = document.getElementById("savings-deadline-end");
+      
+      let items = allSavingsGoals;
+      
+      if (statusSelect && statusSelect.value) {
+        items = items.filter((g) => g.status === statusSelect.value);
+      }
+      
+      if (deadlineStart && deadlineEnd && deadlineStart.value && deadlineEnd.value) {
+        if (new Date(deadlineStart.value) > new Date(deadlineEnd.value)) {
+          showToast("Ngày bắt đầu hạn chót không được sau ngày kết thúc", "error");
+          deadlineStart.value = deadlineEnd.value;
+        } else {
+          const start = new Date(`${deadlineStart.value}T00:00:00.000Z`);
+          const end = new Date(`${deadlineEnd.value}T23:59:59.999Z`);
+          items = items.filter(g => {
+            if (!g.deadline) return false; // Không có hạn chót thì bỏ qua nếu bộ lọc được bật
+            const d = new Date(g.deadline);
+            return d >= start && d <= end;
+          });
+        }
+      }
+
+      listEl.innerHTML =
+        items.map(renderGoalCard).join("") ||
+        '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có mục tiêu tiết kiệm nào (hoặc không khớp với bộ lọc).</p>';
+      renderIcons(listEl);
+
+      listEl.querySelectorAll(".deposit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          depositGoalId = btn.dataset.id;
+          document.getElementById("deposit-goal-name").textContent =
+            btn.dataset.name || "";
+          document.getElementById("deposit-amount").value = "";
+          depositModal?.open();
+        });
+      });
+
+      listEl.querySelectorAll(".delete-goal-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Xoá mục tiêu tiết kiệm này?")) return;
+          try {
+            await apiDeleteSavingsGoal(btn.dataset.id);
+            showToast("Đã xóa mục tiêu.");
+            renderGoals();
+          } catch (error) {
+            showToast(error.message, "error");
+          }
+        });
+      });
+    };
+
     const renderGoals = async () => {
       try {
-        const goals = await apiGetSavingsGoals();
-        listEl.innerHTML =
-          // Lấy từng mục tiêu, chuyển thành HTML bằng renderGoalCard().
-          goals.map(renderGoalCard).join("") ||
-          '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có mục tiêu tiết kiệm nào. Bấm "Thêm mục tiêu" để bắt đầu!</p>';
-        renderIcons(listEl);
-        // Tìm các nút "Đóng góp" trong danh sách
-        listEl.querySelectorAll(".deposit-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            depositGoalId = btn.dataset.id;
-            document.getElementById("deposit-goal-name").textContent =
-              btn.dataset.name || "";
-            document.getElementById("deposit-amount").value = "";
-            depositModal?.open();
-          });
-        });
-
-        listEl.querySelectorAll(".delete-goal-btn").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            if (!confirm("Xoá mục tiêu tiết kiệm này?")) return;
-            try {
-              // Lấy ID từ data-id của nút và gửi sang hàm xóa.
-              await apiDeleteSavingsGoal(btn.dataset.id);
-              showToast("Đã xóa mục tiêu.");
-              renderGoals();
-            } catch (error) {
-              showToast(error.message, "error");
-            }
-          });
-        });
+        allSavingsGoals = await apiGetSavingsGoals();
+        applySavingsFilter();
       } catch (error) {
         showToast(error.message, "error");
       }
     };
     renderGoals();
+
+    const statusSelect = document.getElementById("savings-status-filter");
+    if (statusSelect) {
+      statusSelect.addEventListener("change", applySavingsFilter);
+    }
+    const deadlineStart = document.getElementById("savings-deadline-start");
+    const deadlineEnd = document.getElementById("savings-deadline-end");
+    if (deadlineStart) deadlineStart.addEventListener("change", applySavingsFilter);
+    if (deadlineEnd) deadlineEnd.addEventListener("change", applySavingsFilter);
 
     document
       .getElementById("add-goal-btn")

@@ -233,7 +233,10 @@ async function apiGetCategoryBreakdown(type = 'CHI') {
 }
 
 // Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
-async function apiGetDailyTrend(days = 30) {
+async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
+  if (startDate && endDate) {
+    return apiFetch(`/api/stats/trend?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+  }
   return apiFetch(`/api/stats/trend?days=${days}`);
 }
 
