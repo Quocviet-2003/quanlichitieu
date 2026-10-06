@@ -1411,7 +1411,13 @@ document.addEventListener("layoutLoaded", () => {
               </div>
               <div>
                 <h3 class="text-base font-semibold text-slate-900">${b.category}</h3>
-                <p class="text-xs text-slate-500">Tháng này</p>
+                <p class="text-xs text-slate-500">${(() => {
+                  const now = new Date();
+                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                  if (b.month === currentMonth) return 'Tháng này';
+                  const [yyyy, mm] = b.month.split('-');
+                  return `Tháng ${parseInt(mm)}/${yyyy}`;
+                })()}</p>
               </div>
             </div>
             ${badge}
@@ -1506,13 +1512,6 @@ document.addEventListener("layoutLoaded", () => {
     const monthSelect = document.getElementById("budget-month-select");
     if (monthSelect) {
       const now = new Date();
-      // Add 'Năm nay', 'Năm trước' - wait, budget is by month, so just add months!
-      monthSelect.innerHTML = "";
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthSelect.innerHTML += `<option value="${val}">Tháng ${d.getMonth() + 1}/${d.getFullYear()}</option>`;
-      }
       const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       monthSelect.value = currentMonthVal;
 
