@@ -659,13 +659,12 @@ document.addEventListener("layoutLoaded", () => {
         const transactions = await apiGetTransactions();
         // 10. Tổng hợp giao dịch thành một đoạn văn bản ngắn
         const summary = buildFinanceSummaryText(transactions);
-        // 11. Gửi đoạn văn bản đó đến API phân tích AI
         const insight = await apiGetAiInsight(summary);
-        // 12. Đưa câu trả lời của AI lên màn hình (sử dụng marked để hỗ trợ bảng/Markdown)
+        const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
-          contentEl.innerHTML = marked.parse(insight);
+          contentEl.innerHTML = marked.parse(cleanInsight);
         } else {
-          contentEl.textContent = insight;
+          contentEl.textContent = cleanInsight;
         }
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
@@ -701,13 +700,12 @@ document.addEventListener("layoutLoaded", () => {
     if (closeBtn)
       closeBtn.addEventListener("click", () => panel.classList.add("hidden"));
 
-    // Thêm 1 bong bóng chat vào khung, "user" thì lệch phải, "assistant" thì lệch trái
     const appendMessage = (role, text) => {
       const bubble = document.createElement("div");
       bubble.className =
         role === "user"
-          ? "bg-blue-600 text-white rounded-lg px-3 py-2 max-w-[85%] ml-auto"
-          : "bg-slate-100 text-slate-700 rounded-lg px-3 py-2 max-w-[85%]";
+          ? "bg-blue-600 text-white rounded-lg px-3 py-2 max-w-[85%] ml-auto whitespace-pre-line"
+          : "bg-slate-100 text-slate-700 rounded-lg px-3 py-2 max-w-[85%] whitespace-pre-line";
       bubble.textContent = text;
       messagesEl.appendChild(bubble);
       messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -715,30 +713,28 @@ document.addEventListener("layoutLoaded", () => {
     };
 
     const sendMessage = async () => {
-      const question = input.value.trim(); // lay cau hoi
+      const question = input.value.trim();
       if (!question) return;
 
-      input.value = ""; // xoa du lieu trong o nhap
-      appendMessage("user", question); // hien thi cau hoi
-      const thinkingBubble = appendMessage("assistant", "Đang suy nghĩ..."); //them bong bong suy nghi
+      input.value = "";
+      appendMessage("user", question);
+      const thinkingBubble = appendMessage("assistant", "Đang suy nghĩ...");
 
-      sendBtn.disabled = true; // bat nut gui
+      sendBtn.disabled = true;
       try {
-        const transactions = await apiGetTransactions(); // lay danh sach giao dich
+        const transactions = await apiGetTransactions();
         const summary = buildFinanceSummaryText(transactions);
-        const reply = await apiChatWithAi(question, chatHistory, summary); //Gửi ba dữ liệu lên backend
+        const reply = await apiChatWithAi(question, chatHistory, summary);
+        const cleanReply = typeof cleanAiResponse === "function" ? cleanAiResponse(reply) : reply;
 
         if (window.marked) {
-          thinkingBubble.innerHTML = marked.parse(reply);
-          // Thêm class prose-sm vào bong bóng chatbot
+          thinkingBubble.innerHTML = marked.parse(cleanReply);
           thinkingBubble.classList.add("prose", "prose-sm", "max-w-none");
         } else {
-          thinkingBubble.textContent = reply;
+          thinkingBubble.textContent = cleanReply;
         }
-        // Lưu lại lượt hỏi/đáp này để lần hỏi sau AI vẫn nhớ ngữ cảnh
         chatHistory.push({ role: "user", content: question });
-        chatHistory.push({ role: "assistant", content: reply });
-        // Nếu API bị lỗi thì thay bong bóng chờ bằng lỗi
+        chatHistory.push({ role: "assistant", content: cleanReply });
       } catch (error) {
         thinkingBubble.textContent = `Lỗi: ${error.message}`;
       } finally {
