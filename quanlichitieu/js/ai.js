@@ -4,7 +4,24 @@
 // Nhờ vậy API key không bao giờ lộ ra trình duyệt.
 // Các request đều kèm Authorization (token lưu ở localStorage bởi api.js).
 
-// summary là đoạn văn bản được main.js truyền vào
+function cleanAiResponse(text) {
+  if (!text || typeof text !== 'string') return '';
+  let str = text.replace(/\|\s*\|/g, '\n');
+  str = str.replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n$2');
+  str = str.replace(/\*\*/g, '');
+
+  const lines = str.split('\n').map((l) => {
+    let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, '');
+    if (/^[\s\-:|]+$/.test(line)) return '';
+    return line.replace(/\s*\|\s*/g, ' - ').trim();
+  }).filter(Boolean);
+
+  return lines.join('\n');
+}
+if (typeof window !== 'undefined') {
+  window.cleanAiResponse = cleanAiResponse;
+}
+
 async function apiGetAiInsight(summary) {
   let res;
   try {
@@ -14,12 +31,10 @@ async function apiGetAiInsight(summary) {
     }
     res = await fetch('/api/ai-insights', {
       method: 'POST',
-      // Gửi Content-Type và token 
       headers,
-      body: JSON.stringify({ summary }) // Chuyển object { summary } thành chuỗi JSON
+      body: JSON.stringify({ summary })
     });
   } catch (err) {
-    // Thường gặp khi backend chưa chạy
     throw new Error('Không gọi được API. Hãy chạy app bằng lệnh "npm run dev" trong thư mục quanlichitieu-backend.');
   }
 
@@ -31,11 +46,9 @@ async function apiGetAiInsight(summary) {
   }
 
   if (!res.ok) throw new Error(data.error || 'Lỗi phân tích AI');
-  // Trả câu nhận xét về nơi đã gọi hàm trong main.js
-  return data.insight;
+  return cleanAiResponse(data.insight);
 }
 
-// Nhận question, ..
 async function apiChatWithAi(message, history, summary) {
   let res;
   try {
@@ -54,11 +67,11 @@ async function apiChatWithAi(message, history, summary) {
 
   let data;
   try {
-    data = await res.json(); //  // Đọc kết quả backend trả về
+    data = await res.json();
   } catch (err) {
     throw new Error('Server đang chạy không hỗ trợ AI. Hãy chạy app bằng lệnh "npm run dev" trong thư mục quanlichitieu-backend.');
   }
 
   if (!res.ok) throw new Error(data.error || 'Lỗi chatbot AI');
-  return data.reply;  // Trả câu trả lời về main.js
+  return cleanAiResponse(data.reply);
 }

@@ -287,17 +287,18 @@ async function apiChangePassword(oldPassword, newPassword) {
   });
 }
 
-// --- MOCK AI INSIGHTS & CHAT (Fallback nếu backend chưa hỗ trợ Markdown hoàn chỉnh) ---
 async function apiGetAiInsight(summaryText) {
-  return apiFetch('/api/ai/insight', {
+  const res = await apiFetch('/api/ai/insight', {
     method: 'POST',
     body: JSON.stringify({ summary: summaryText })
   });
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
 }
 
 async function apiChatWithAi(question, history, summaryText) {
-  return apiFetch('/api/ai/chat', {
+  const res = await apiFetch('/api/ai/chat', {
     method: 'POST',
     body: JSON.stringify({ question, history, summary: summaryText })
   });
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
 }
