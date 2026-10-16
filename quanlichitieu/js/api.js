@@ -110,6 +110,7 @@ async function apiDeleteTransaction(id) {
 
 // month dạng 'YYYY-MM', bỏ trống = tháng hiện tại//
 async function apiGetBudgets(month) {
+  // Chọn tháng ở giao diện sẽ truyền month xuống backend; danh mục lọc ở main.js.
   const query = month ? `?month=${encodeURIComponent(month)}` : '';
   // Gửi yêu cầu GET tới backend
   // Không truyền tháng thì backend sẽ tự lấy tháng hiện tại
@@ -219,6 +220,8 @@ async function apiGetCategories() {
 
 // Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
 async function apiGetStatsSummary(date = null) {
+  // Có date: backend tính thu/chi của ngày đó. Không có: dùng tháng hiện tại.
+  // Số dư và tổng tiết kiệm trong kết quả vẫn là tổng chung.
   const query = date ? `?date=${encodeURIComponent(date)}` : '';
   return apiFetch(`/api/stats/summary${query}`);
 }
@@ -235,9 +238,12 @@ async function apiGetCategoryBreakdown(type = 'CHI') {
 
 // Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
 async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
+  // Ưu tiên khoảng ngày khi đủ hai ngày; khi đó tham số days không được dùng.
   if (startDate && endDate) {
     return apiFetch(`/api/stats/trend?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
   }
+  // Nhánh dự phòng: cần thực sự gọi hàm khi thiếu ngày mới gửi days xuống backend.
+  // Tổng quan hiện không gọi lại hàm khi người dùng xóa các ô ngày.
   return apiFetch(`/api/stats/trend?days=${days}`);
 }
 

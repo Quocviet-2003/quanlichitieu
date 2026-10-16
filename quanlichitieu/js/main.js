@@ -18,7 +18,7 @@ document.addEventListener("layoutLoaded", () => {
           window.location.href = "index.html";
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -153,11 +153,10 @@ document.addEventListener("layoutLoaded", () => {
     if (!container) return;
 
     const toast = document.createElement("div");
-    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium ${
-      type === "success"
+    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium ${type === "success"
         ? "bg-white border-emerald-100 text-emerald-800"
         : "bg-white border-rose-100 text-rose-800"
-    }`;
+      }`;
 
     const iconName = type === "success" ? "check-circle" : "alert-circle";
     const iconColor = type === "success" ? "text-emerald-500" : "text-rose-500";
@@ -175,7 +174,7 @@ document.addEventListener("layoutLoaded", () => {
 
   // Cho phép nơi khác (VD: sau khi thêm giao dịch) yêu cầu chuông thông báo tải lại ngay,
   // thay vì đợi người dùng tự bấm chuông. initNotifications() sẽ gán hàm thật vào đây.
-  let refreshNotifications = () => {};
+  let refreshNotifications = () => { };
 
   // --- 3. DỰNG HTML DANH SÁCH GIAO DỊCH (dùng chung cho mọi trang có bảng giao dịch) ---
 
@@ -325,6 +324,7 @@ document.addEventListener("layoutLoaded", () => {
       }
 
       // Trang income.html/expense.html có ô tổng tiền riêng, tính tổng rồi điền vào
+      // TỔNG TIỀN THEO TRANG THU/CHI
       const totalEl = document.getElementById("page-total-amount");
       if (totalEl) {
         const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
@@ -348,32 +348,41 @@ document.addEventListener("layoutLoaded", () => {
     if (!filterBtn) return;
 
     let allTransactions = [];
-
+    // LỌC THU/CHI/GD//
     const applyFilters = () => {
+      // Bắt đầu từ toàn bộ giao dịch; filter() tạo mảng mới, giữ nguyên dữ liệu gốc.
       let list = allTransactions;
 
+      // Trang Thu nhập đặt data-tx-filter="THU", trang Chi tiêu đặt "CHI" trên body.
       const pageFilterType = document.body.dataset.txFilter;
       if (pageFilterType) {
+        // Lọc Thu hoặc Chi theo trang
         list = list.filter((tx) => tx.type === pageFilterType);
       } else if (typeSelect && typeSelect.value) {
+        // Trang Giao dịch dùng loại do người dùng chọn; giá trị rỗng nghĩa là tất cả.
         list = list.filter((tx) => tx.type === typeSelect.value);
       }
 
+      // LỌC DANH MỤC
       if (categorySelect && categorySelect.value)
         list = list.filter((tx) => tx.category === categorySelect.value);
       if (monthInput && monthInput.value) {
-        // monthInput.value format is "YYYY-MM"
+        // LỌC THÁNG
         list = list.filter(
           (tx) => tx.date && tx.date.startsWith(monthInput.value),
         );
       }
 
+      // Tìm phần tử hiển thị tổng tiền trên trang.
       const totalEl = document.getElementById("page-total-amount");
       if (totalEl) {
+        // Cộng amount của các giao dịch sau khi lọc, bắt đầu từ 0.
         const total = list.reduce((sum, tx) => sum + tx.amount, 0);
+        // Định dạng tiền tệ rồi cập nhật tổng tiền trên giao diện.
         totalEl.textContent = formatCurrency(total);
       }
 
+      // Vẽ lại danh sách bằng các giao dịch đáp ứng tất cả điều kiện lọc.
       renderTxList(list);
     };
 
@@ -395,12 +404,13 @@ document.addEventListener("layoutLoaded", () => {
         cats.map((c) => `<option value="${c}">${c}</option>`).join("");
       categorySelect.value = current;
     };
-
+    //XEM GIAO DỊCH//
     apiGetTransactions()
       .then((transactions) => {
         allTransactions = transactions;
+        // Đổ danh mục vào ô chọn bộ lọc
         fillCategoryOptions();
-        applyFilters();
+        applyFilters(); //  Lọc → tính tổng → hiển thị danh sách
       })
       .catch((error) => showToast(error.message, "error"));
 
@@ -420,12 +430,14 @@ document.addEventListener("layoutLoaded", () => {
       }
     });
 
+    // Mỗi lần người dùng đổi loại, danh mục hoặc tháng, lọc và tính lại tổng tiền.
     if (typeSelect) typeSelect.addEventListener("change", applyFilters);
     if (categorySelect) categorySelect.addEventListener("change", applyFilters);
     if (monthInput) monthInput.addEventListener("change", applyFilters);
 
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
+        // Xóa lựa chọn lọc; loại cố định THU/CHI của trang vẫn được áp dụng.
         if (typeSelect) typeSelect.value = "";
         if (categorySelect) categorySelect.value = "";
         if (monthInput) monthInput.value = "";
@@ -1305,13 +1317,13 @@ document.addEventListener("layoutLoaded", () => {
         })
         .catch((error) => showToast(error.message, "error"));
     };
-
+    // tải một lần khi mở trang, rồi tải lại mỗi khi đổi ngày.
     loadStatsSummary();
     if (overviewDateInput) {
       overviewDateInput.addEventListener("change", loadStatsSummary);
     }
 
-    // Biểu đồ đường: 7/30 ngày gần nhất hoặc 6 tháng (theo ô chọn kỳ)
+    // Biểu đồ đường:
     const lineCanvas = document.getElementById("lineChart");
     let lineChart = null;
 
@@ -1381,10 +1393,10 @@ document.addEventListener("layoutLoaded", () => {
       const fmtDate = (d) => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       };
-
+      // Tự điền khoảng mặc định: đầu tháng → hôm nay (không phải 30 ngày gần nhất).
       startDateInput.value = fmtDate(firstDay);
       endDateInput.value = fmtDate(now);
-
+      //Khi đổi ngày kiểm tra khoảng ngày rồi gọi lại drawLineChart().
       const handleChange = () => {
         if (startDateInput.value && endDateInput.value) {
           if (new Date(startDateInput.value) > new Date(endDateInput.value)) {
@@ -1430,7 +1442,7 @@ document.addEventListener("layoutLoaded", () => {
             },
           });
         })
-        .catch(() => {}); // chưa có dữ liệu chi thì bỏ qua, đừng làm phiền người dùng
+        .catch(() => { }); // chưa có dữ liệu chi thì bỏ qua, đừng làm phiền người dùng
     }
   };
 
@@ -1451,7 +1463,7 @@ document.addEventListener("layoutLoaded", () => {
             .join("");
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     // nsssssssssshiển thị  ket qua //
     const renderBudgetCard = (b) => {
       // Lấy biểu tượng và màu sắc tương ứng với danh mục//
@@ -1481,12 +1493,12 @@ document.addEventListener("layoutLoaded", () => {
               <div>
                 <h3 class="text-base font-semibold text-slate-900">${b.category}</h3>
                 <p class="text-xs text-slate-500">${(() => {
-                  const now = new Date();
-                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-                  if (b.month === currentMonth) return "Tháng này";
-                  const [yyyy, mm] = b.month.split("-");
-                  return `Tháng ${parseInt(mm)}/${yyyy}`;
-                })()}</p>
+          const now = new Date();
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          if (b.month === currentMonth) return "Tháng này";
+          const [yyyy, mm] = b.month.split("-");
+          return `Tháng ${parseInt(mm)}/${yyyy}`;
+        })()}</p>
               </div>
             </div>
             ${badge}
@@ -1510,18 +1522,23 @@ document.addEventListener("layoutLoaded", () => {
     const filterPanel = document.getElementById("budget-filter-panel");
     const categorySelect = document.getElementById("budget-filter-category");
     const clearBtn = document.getElementById("budget-filter-clear-btn");
-
+    //LỌC NS//
     const applyFilter = () => {
+      // Lấy toàn bộ ngân sách đã tải làm danh sách ban đầu.
       let items = allBudgets;
       if (categorySelect && categorySelect.value) {
+        // Chỉ giữ ngân sách thuộc danh mục đã chọn; bỏ qua khi chọn tất cả.
         items = items.filter((b) => b.category === categorySelect.value);
       }
 
+      // Chuyển từng ngân sách thành thẻ HTML; hiển thị thông báo nếu kết quả rỗng.
       listEl.innerHTML =
         items.map(renderBudgetCard).join("") ||
         '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có ngân sách nào cho tháng này.</p>';
+      // Vẽ các biểu tượng trong danh sách vừa được cập nhật.
       renderIcons(listEl);
 
+      // Gắn lại sự kiện xóa vì các nút vừa được tạo lại bằng innerHTML.
       listEl.querySelectorAll(".delete-budget-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           if (!confirm("Xoá ngân sách này?")) return;
@@ -1722,11 +1739,12 @@ document.addEventListener("layoutLoaded", () => {
       const deadlineEnd = document.getElementById("savings-deadline-end");
 
       let items = allSavingsGoals;
-
+      //LỌC TRẠNG THÁI//
       if (statusSelect && statusSelect.value) {
         items = items.filter((g) => g.status === statusSelect.value);
       }
 
+      //LỌC NGÀY//
       if (
         deadlineStart &&
         deadlineEnd &&
@@ -1998,11 +2016,10 @@ document.addEventListener("layoutLoaded", () => {
               </td>
               <td class="px-5 py-3">${statusBadge}</td>
               <td class="px-5 py-3 text-right">
-                ${
-                  u.id === getCurrentUser()?.id
-                    ? '<span class="text-xs text-slate-400">(bạn)</span>'
-                    : `<button class="toggle-block-btn btn btn-secondary !px-3 !py-1.5 !text-xs" data-id="${u.id}" data-status="${u.status}">${blocked ? "Mở khóa" : "Khóa"}</button>`
-                }
+                ${u.id === getCurrentUser()?.id
+                ? '<span class="text-xs text-slate-400">(bạn)</span>'
+                : `<button class="toggle-block-btn btn btn-secondary !px-3 !py-1.5 !text-xs" data-id="${u.id}" data-status="${u.status}">${blocked ? "Mở khóa" : "Khóa"}</button>`
+              }
               </td>
             </tr>`;
           })
@@ -2140,7 +2157,7 @@ document.addEventListener("layoutLoaded", () => {
     const filterPanel = document.getElementById("fixed-filter-panel");
     const categorySelect = document.getElementById("fixed-filter-category");
     const clearBtn = document.getElementById("fixed-filter-clear-btn");
-
+    // tính tổng tiền theo danh mục//
     const renderList = (items) => {
       let total = items.reduce((sum, i) => sum + i.amount, 0);
       const totalEl = document.getElementById("fixed-expense-total");
@@ -2164,12 +2181,15 @@ document.addEventListener("layoutLoaded", () => {
         });
       });
     };
-
+    //LỌC//
     const applyFilter = () => {
+      // Bắt đầu từ toàn bộ chi phí cố định đã tải.
       let items = allItems;
       if (categorySelect && categorySelect.value) {
+        // filter() tạo danh sách chỉ gồm chi phí thuộc danh mục đã chọn.
         items = items.filter((i) => i.category === categorySelect.value);
       }
+      // Cập nhật giao diện theo kết quả lọc; giá trị danh mục rỗng sẽ hiện tất cả.
       renderList(items);
     };
 
@@ -2228,17 +2248,21 @@ document.addEventListener("layoutLoaded", () => {
     document
       .getElementById("add-fixed-btn")
       ?.addEventListener("click", () => modal?.open());
-
+    //khi bấm lưu gd
     document
       .getElementById("save-fixed-expense-btn")
       ?.addEventListener("click", async () => {
+        //danh mục
         const category = document.getElementById(
           "fixed-expense-category",
         ).value;
+        //tên chi
         const desc = document.getElementById("fixed-expense-desc").value.trim();
+        //tiền
         const amount = parseFloat(
           document.getElementById("fixed-expense-amount").value,
         );
+        //ngày trừ
         const deductDay =
           parseInt(
             document.getElementById("fixed-expense-deduct-day").value,

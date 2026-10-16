@@ -12,6 +12,9 @@ const { asyncHandler, assert, requireFields, toNumber, monthRange, currentMonth,
 
 // GET /api/budgets
 exports.getBudgets = asyncHandler(async (req, res) => {
+  // BỘ LỌC THÁNG NGÂN SÁCH: frontend gửi ?month=YYYY-MM khi đổi tháng.
+  // Backend lọc ngân sách và giao dịch CHI theo tháng đó để tính spent/%.
+  // Bộ lọc danh mục trên giao diện được xử lý riêng ở main.js sau khi nhận kết quả.
   const month = req.query.month || currentMonth(); // Nếu query không có month -> lấy tháng hiện tại
 
   // Lấy range ngày (start, end) của tháng đó để tính toán chi tiêu
