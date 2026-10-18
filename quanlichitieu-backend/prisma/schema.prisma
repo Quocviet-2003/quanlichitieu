@@ -86,6 +86,7 @@ model SavingsGoal {
   monthlyContribution Float? // Kế hoạch đóng góp mỗi tháng
   deadline            DateTime?
   status              String    @default("IN_PROGRESS") // 'IN_PROGRESS' | 'COMPLETED'
+  termType            String    @default("SHORT_TERM")
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 

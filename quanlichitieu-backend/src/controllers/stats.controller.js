@@ -8,12 +8,16 @@
 const prisma = require('../config/db');
 const { asyncHandler, assert, monthRange, currentMonth, monthKey, dayKeyOf } = require('../utils/helpers');
 
-// GET /api/stats/summary?date=YYYY-MM-DD :
 exports.getSummary = asyncHandler(async (req, res) => {
-  //Có ngày thì tạo khoảng từ đầu ngày đến đầu ngày tiếp theo. Không có ngày thì dùng tháng hiện tại.
+
   let start, end;
+  const queryMonth = req.query.month;
   const queryDate = req.query.date;
-  if (queryDate) {
+  if (queryMonth) {
+    const range = monthRange(queryMonth);
+    start = range.start;
+    end = range.end;
+  } else if (queryDate) {
     const d = new Date(`${queryDate}T00:00:00.000Z`);
     start = new Date(d);
     end = new Date(d);
@@ -26,36 +30,35 @@ exports.getSummary = asyncHandler(async (req, res) => {
 
   const [incomeAgg, expenseAgg, savingsAgg, periodIncomeAgg, periodExpenseAgg, txCount] =
     await Promise.all([
-      // 1. Tổng tiền THU từ trước đến nay.
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'THU' } }),
-      // 2. Tổng tiền CHI từ trước đến nay.
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'CHI' } }),
-      // 3. Tổng số tiền hiện có trong các mục tiêu tiết kiệm.
       prisma.savingsGoal.aggregate({ _sum: { currentAmount: true }, where: { userId: req.userId } }),
-      // 4. Tổng tiền THU trong khoảng thời gian đã chọn (ngày hoặc tháng).
       prisma.transaction.aggregate({
         _sum: { amount: true },
         where: { userId: req.userId, type: 'THU', date: { gte: start, lt: end } },
       }),
-      // 5. Tổng tiền CHI trong khoảng thời gian đã chọn.
       prisma.transaction.aggregate({
         _sum: { amount: true },
         where: { userId: req.userId, type: 'CHI', date: { gte: start, lt: end } },
       }),
-      // 6. Đếm số giao dịch của người dùng.
       prisma.transaction.count({ where: { userId: req.userId } }),
     ]);
 
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpense = expenseAgg._sum.amount || 0;
+  const periodIncome = periodIncomeAgg._sum.amount || 0;
+  const periodExpense = periodExpenseAgg._sum.amount || 0;
+  const monthSurplus = Math.max(0, periodIncome - periodExpense);
 
   res.json({
     balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
     totalSavings: savingsAgg._sum.currentAmount || 0,
-    periodIncome: periodIncomeAgg._sum.amount || 0,
-    periodExpense: periodExpenseAgg._sum.amount || 0,
+    periodIncome,
+    periodExpense,
+    monthSurplus,
+    selectedMonth: queryMonth || currentMonth(),
     currentMonth: currentMonth(),
     transactionCount: txCount,
   });

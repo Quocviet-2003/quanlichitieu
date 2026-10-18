@@ -68,7 +68,7 @@ exports.getInsights = asyncHandler(async (req, res) => {
 
   const messages = [
     { role: 'system', content: buildSystemPrompt(String(req.body.summary)) },
-    { role: 'user', content: 'Hãy đưa ra nhận xét và một vài lời khuyên tài chính ngắn gọn từ số liệu trên.' },
+    { role: 'user', content: 'Hãy phân tích chi tiết tình hình tài chính của tôi theo từng tháng, so sánh sự thay đổi giữa các tháng gần nhất, chỉ ra các khoản chi tiêu nhiều nhất và đưa ra lời khuyên cụ thể để tối ưu chi tiêu và tiết kiệm.' },
   ];
   const result = await callOllama(messages);
   await logUsage(req.userId, 'ai-insights', result);

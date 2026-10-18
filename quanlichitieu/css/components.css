@@ -202,3 +202,29 @@
     border-radius: 999px;
     transition: width 0.4s ease;
 }
+
+#ai-chat-messages table,
+#ai-insight-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.75rem;
+    display: block;
+    overflow-x: auto;
+}
+
+#ai-chat-messages th,
+#ai-chat-messages td,
+#ai-insight-content th,
+#ai-insight-content td {
+    border: 1px solid #ddd5bf;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+#ai-chat-messages th,
+#ai-insight-content th {
+    background: #f1ede2;
+    font-weight: 600;
+}

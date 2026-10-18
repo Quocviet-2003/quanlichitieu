@@ -82,12 +82,18 @@ async function logout() {
 
 // --- GIAO DỊCH (THU NHẬP / CHI TIÊU) ---
 
-// Danh sách giao dịch, mới nhất trước (backend đã sort sẵn)
-async function apiGetTransactions() {
-  return apiFetch('/api/transactions');
+async function apiGetTransactions(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.from) sp.append('from', params.from);
+  if (params.to) sp.append('to', params.to);
+  if (params.month) sp.append('month', params.month);
+  if (params.type) sp.append('type', params.type);
+  if (params.category) sp.append('category', params.category);
+  if (params.q) sp.append('q', params.q);
+  const qs = sp.toString();
+  return apiFetch(`/api/transactions${qs ? `?${qs}` : ''}`);
 }
 
-// Thêm giao dịch mới: { amount, type: 'THU'|'CHI', category, description, date }
 async function apiCreateTransaction(txData) {
   return apiFetch('/api/transactions', {
     method: 'POST',
@@ -107,14 +113,17 @@ async function apiDeleteTransaction(id) {
 }
 
 // --- NGÂN SÁCH (budget.html) ---
-
-// month dạng 'YYYY-MM', bỏ trống = tháng hiện tại//
-async function apiGetBudgets(month) {
-  // Chọn tháng ở giao diện sẽ truyền month xuống backend; danh mục lọc ở main.js.
-  const query = month ? `?month=${encodeURIComponent(month)}` : '';
-  // Gửi yêu cầu GET tới backend
-  // Không truyền tháng thì backend sẽ tự lấy tháng hiện tại
-  return apiFetch(`/api/budgets${query}`);
+async function apiGetBudgets(options = '') {
+  if (typeof options === 'string') {
+    const query = options ? `?month=${encodeURIComponent(options)}` : '';
+    return apiFetch(`/api/budgets${query}`);
+  }
+  const sp = new URLSearchParams();
+  if (options && options.month) sp.append('month', options.month);
+  if (options && options.from) sp.append('from', options.from);
+  if (options && options.to) sp.append('to', options.to);
+  const qs = sp.toString();
+  return apiFetch(`/api/budgets${qs ? `?${qs}` : ''}`);
 }
 
 async function apiCreateBudget(budgetData) {
@@ -182,14 +191,19 @@ async function apiMarkAllNotificationsRead() {
 // --- MỤC TIÊU TIẾT KIỆM (savings.html) ---
 
 // Mỗi phần tử: { id, name, targetAmount, currentAmount, deadline, monthlyContribution, status, percentComplete }
-async function apiGetSavingsGoals() {
-  return apiFetch('/api/savings');
+async function apiGetSavingsGoals(params = {}) {
+  const sp = new URLSearchParams();
+  if (params.termType) sp.append('termType', params.termType);
+  if (params.month) sp.append('month', params.month);
+  if (params.status) sp.append('status', params.status);
+  const qs = sp.toString();
+  return apiFetch(`/api/savings${qs ? `?${qs}` : ''}`);
 }
 
 async function apiCreateSavingsGoal(goalData) {
   return apiFetch('/api/savings', {
     method: 'POST',
-    body: JSON.stringify(goalData) // { name, targetAmount, deadline, monthlyContribution }
+    body: JSON.stringify(goalData)
   });
 }
 
@@ -200,7 +214,6 @@ async function apiUpdateSavingsGoal(id, goalData) {
   });
 }
 
-// Đóng góp thêm tiền vào mục tiêu: { amount }
 async function apiDepositToGoal(id, amount) {
   return apiFetch(`/api/savings/${id}/deposit`, {
     method: 'POST',
@@ -212,17 +225,23 @@ async function apiDeleteSavingsGoal(id) {
   return apiFetch(`/api/savings/${id}`, { method: 'DELETE' });
 }
 
-// --- DANH MỤC & THỐNG KÊ ---
-
 async function apiGetCategories() {
   return apiFetch('/api/categories');
 }
 
 // Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
-async function apiGetStatsSummary(date = null) {
-  // Có date: backend tính thu/chi của ngày đó. Không có: dùng tháng hiện tại.
-  // Số dư và tổng tiết kiệm trong kết quả vẫn là tổng chung.
-  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+async function apiGetStatsSummary(options = null) {
+  let query = '';
+  if (typeof options === 'string') {
+    if (options.length === 7) {
+      query = `?month=${encodeURIComponent(options)}`;
+    } else {
+      query = `?date=${encodeURIComponent(options)}`;
+    }
+  } else if (options && typeof options === 'object') {
+    if (options.month) query = `?month=${encodeURIComponent(options.month)}`;
+    else if (options.date) query = `?date=${encodeURIComponent(options.date)}`;
+  }
   return apiFetch(`/api/stats/summary${query}`);
 }
 
@@ -232,8 +251,11 @@ async function apiGetMonthlyTrend(months = 6) {
 }
 
 // Theo danh mục: [{ category, total, percentage }]
-async function apiGetCategoryBreakdown(type = 'CHI') {
-  return apiFetch(`/api/stats/categories?type=${encodeURIComponent(type)}`);
+async function apiGetCategoryBreakdown(type = 'CHI', from = null, to = null) {
+  let url = `/api/stats/categories?type=${encodeURIComponent(type)}`;
+  if (from) url += `&from=${encodeURIComponent(from)}`;
+  if (to) url += `&to=${encodeURIComponent(to)}`;
+  return apiFetch(url);
 }
 
 // Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
