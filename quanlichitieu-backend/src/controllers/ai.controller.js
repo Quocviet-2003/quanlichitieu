@@ -15,8 +15,18 @@ const { callOllama, estimateCost } = require('../config/ollama');
 // Giữ nguyên giọng điệu như server cũ của FE
 function buildSystemPrompt(summary) {
   return (
-    'Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n' +
-    `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || '(chưa có dữ liệu)'}`
+    'Bạn là trợ lý tài chính cá nhân chuyên nghiệp bằng tiếng Việt.\n' +
+    'Dữ liệu tài chính của người dùng được cung cấp dưới dạng các BẢNG DỮ LIỆU chuẩn Markdown gồm:\n' +
+    '1. Bảng tổng hợp thu chi theo tháng\n' +
+    '2. Bảng chi tiêu theo danh mục qua các tháng\n' +
+    '3. Bảng theo dõi hạn mức ngân sách\n' +
+    '4. Bảng mục tiêu tiết kiệm\n' +
+    '5. Bảng dữ liệu chi tiết các giao dịch\n\n' +
+    'Hướng dẫn tra cứu và trả lời:\n' +
+    '- Tra cứu trực tiếp từ các cột và dòng trong bảng dữ liệu để trả lời chính xác từng giao dịch, ngày tháng, danh mục, số tiền.\n' +
+    '- Khi người dùng hỏi so sánh các tháng hoặc tổng hợp danh mục, hãy tổng hợp từ bảng và ưu tiên trả lời bằng BẢNG MARKDOWN rõ ràng, dễ nhìn.\n' +
+    '- Đưa ra phân tích chi tiết xu hướng tài chính và lời khuyên thiết thực dựa trên các bảng dữ liệu thực tế.\n\n' +
+    `DƯỚI ĐÂY LÀ CÁC BẢNG DỮ LIỆU TÀI CHÍNH:\n${summary || '(chưa có dữ liệu)'}`
   );
 }
 
@@ -56,7 +66,7 @@ exports.getInsights = asyncHandler(async (req, res) => {
 
   const messages = [
     { role: 'system', content: buildSystemPrompt(String(req.body.summary)) },
-    { role: 'user', content: 'Hãy đưa ra nhận xét và một vài lời khuyên tài chính ngắn gọn từ số liệu trên.' },
+    { role: 'user', content: 'Hãy phân tích chi tiết tình hình tài chính của tôi theo từng tháng, so sánh sự thay đổi giữa các tháng gần nhất, chỉ ra các khoản chi tiêu nhiều nhất và đưa ra lời khuyên cụ thể để tối ưu chi tiêu và tiết kiệm.' },
   ];
   // Gọi Ollama và chờ kết quả
   const result = await callOllama(messages);

@@ -12,18 +12,23 @@ const { asyncHandler, assert, requireFields, toNumber, monthRange, currentMonth,
 
 // GET /api/budgets
 exports.getBudgets = asyncHandler(async (req, res) => {
-  const month = req.query.month || currentMonth(); // Nếu query không có month -> lấy tháng hiện tại
+  let start, end, month;
+  if (req.query.from && req.query.to) {
+    start = new Date(`${req.query.from}T00:00:00.000Z`);
+    end = new Date(`${req.query.to}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    month = req.query.month || `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+  } else {
+    month = req.query.month || currentMonth();
+    const range = monthRange(month);
+    start = range.start;
+    end = range.end;
+  }
 
-  // Lấy range ngày (start, end) của tháng đó để tính toán chi tiêu
-  const { start, end } = monthRange(month);
-
-
-  // Lấy các ngân sách của người dùng trong tháng đã chọn//
   const budgets = await prisma.budget.findMany({
     where: { userId: req.userId, month },
     orderBy: { category: 'asc' },
   });
-  // Nếu chưa có ngân sách thì trả về mảng rỗng
   if (budgets.length === 0) return res.json([]);
 
   //   // Tính tổng số tiền đã chi theo từng danh mục trong tháng

@@ -6,53 +6,84 @@
  * - DELETE /api/savings/:id          : xoá mục tiêu
  * - POST   /api/savings/:id/deposit  : đóng góp thêm tiền (tự hoàn tất khi đủ mục tiêu)
  */
-const prisma = require('../config/db');
-const { asyncHandler, assert, requireFields, toNumber, isValidObjectId } = require('../utils/helpers');
+const prisma = require("../config/db");
+const {
+  asyncHandler,
+  assert,
+  requireFields,
+  toNumber,
+  isValidObjectId,
+  monthRange,
+} = require("../utils/helpers");
 
 function withPercent(goal) {
   const percentComplete =
-    //số tiền hiện tại / số tiền mục tiêu * 100.
-    goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0;
+    goal.targetAmount > 0
+      ? Math.min(
+          100,
+          Math.round((goal.currentAmount / goal.targetAmount) * 100),
+        )
+      : 0;
   return { ...goal, percentComplete };
 }
 
-// GET /api/savings
 exports.getSavingsGoals = asyncHandler(async (req, res) => {
-  // Prisma tìm nhiều mục tiêu trong database.
+  const where = { userId: req.userId };
+  if (req.query.termType) {
+    where.termType = req.query.termType;
+  }
+  if (req.query.status) {
+    where.status = req.query.status;
+  }
   const goals = await prisma.savingsGoal.findMany({
-    where: { userId: req.userId },
-    orderBy: [{ status: 'desc' }, { createdAt: 'desc' }], // Đang làm trước, mới nhất trước
+    where,
+    orderBy: [{ status: "desc" }, { createdAt: "desc" }],
   });
-  // Tính phần trăm cho từng mục tiêu
-  // rồi trả danh sách về frontend.
-  res.json(goals.map(withPercent));
+  let result = goals.map(withPercent);
+  if (req.query.month) {
+    const { start, end } = monthRange(req.query.month);
+    result = result.filter((g) => {
+      const created = new Date(g.createdAt);
+      if (created >= end) return false;
+      if (g.deadline) {
+        const dl = new Date(g.deadline);
+        if (dl < start) return false;
+      }
+      return true;
+    });
+  }
+  res.json(result);
 });
 
-// POST /api/savings
 exports.createSavingsGoal = asyncHandler(async (req, res) => {
-  // Kiểm tra body phải có:
-  requireFields(req.body, ['name', 'targetAmount']);
+  requireFields(req.body, ["name", "targetAmount"]);
   const name = String(req.body.name).trim();
-  // Chuyển targetAmount thành số.
   const targetAmount = toNumber(req.body.targetAmount);
-  assert(name !== '', 400, 'Vui lòng nhập tên mục tiêu.');
-  assert(Number.isFinite(targetAmount) && targetAmount > 0, 400, 'Số tiền mục tiêu phải là số lớn hơn 0.');
-  // Mặc định chưa có deadline.
+  assert(name !== "", 400, "Vui lòng nhập tên mục tiêu.");
+  assert(
+    Number.isFinite(targetAmount) && targetAmount > 0,
+    400,
+    "Số tiền mục tiêu phải là số lớn hơn 0.",
+  );
   let deadline = null;
   if (req.body.deadline) {
     deadline = new Date(req.body.deadline);
-    assert(!isNaN(deadline.getTime()), 400, 'Hạn chót không hợp lệ.');
+    assert(!isNaN(deadline.getTime()), 400, "Hạn chót không hợp lệ.");
   }
-  // Lấy kế hoạch đóng góp mỗi tháng.
   const monthlyContribution = toNumber(req.body.monthlyContribution);
+  const termType =
+    req.body.termType === "LONG_TERM" ? "LONG_TERM" : "SHORT_TERM";
 
   const goal = await prisma.savingsGoal.create({
     data: {
       userId: req.userId,
       name,
       targetAmount,
-      monthlyContribution: Number.isFinite(monthlyContribution) ? monthlyContribution : null,
+      monthlyContribution: Number.isFinite(monthlyContribution)
+        ? monthlyContribution
+        : null,
       deadline,
+      termType,
       currentAmount: toNumber(req.body.currentAmount) || 0,
     },
   });
@@ -66,17 +97,21 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
   const existing = isValidObjectId(id)
     ? await prisma.savingsGoal.findFirst({ where: { id, userId: req.userId } })
     : null;
-  assert(existing, 404, 'Không tìm thấy mục tiêu tiết kiệm.');
+  assert(existing, 404, "Không tìm thấy mục tiêu tiết kiệm.");
 
   const data = {};
   if (req.body.name !== undefined) {
     const name = String(req.body.name).trim();
-    assert(name !== '', 400, 'Tên mục tiêu không được để trống.');
+    assert(name !== "", 400, "Tên mục tiêu không được để trống.");
     data.name = name;
   }
   if (req.body.targetAmount !== undefined) {
     const targetAmount = toNumber(req.body.targetAmount);
-    assert(Number.isFinite(targetAmount) && targetAmount > 0, 400, 'Số tiền mục tiêu phải là số lớn hơn 0.');
+    assert(
+      Number.isFinite(targetAmount) && targetAmount > 0,
+      400,
+      "Số tiền mục tiêu phải là số lớn hơn 0.",
+    );
     data.targetAmount = targetAmount;
   }
   if (req.body.monthlyContribution !== undefined) {
@@ -84,27 +119,49 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
     data.monthlyContribution = Number.isFinite(mc) ? mc : null;
   }
   if (req.body.deadline !== undefined) {
-    if (req.body.deadline === null || req.body.deadline === '') {
+    if (req.body.deadline === null || req.body.deadline === "") {
       data.deadline = null;
     } else {
       const deadline = new Date(req.body.deadline);
-      assert(!isNaN(deadline.getTime()), 400, 'Hạn chót không hợp lệ.');
+      assert(!isNaN(deadline.getTime()), 400, "Hạn chót không hợp lệ.");
       data.deadline = deadline;
     }
   }
+  if (req.body.termType !== undefined) {
+    assert(
+      ["SHORT_TERM", "LONG_TERM"].includes(req.body.termType),
+      400,
+      "termType chỉ nhận 'SHORT_TERM' hoặc 'LONG_TERM'.",
+    );
+    data.termType = req.body.termType;
+  }
   if (req.body.status !== undefined) {
-    assert(['IN_PROGRESS', 'COMPLETED'].includes(req.body.status), 400, "Trạng thái chỉ nhận 'IN_PROGRESS' hoặc 'COMPLETED'.");
+    assert(
+      ["IN_PROGRESS", "COMPLETED"].includes(req.body.status),
+      400,
+      "Trạng thái chỉ nhận 'IN_PROGRESS' hoặc 'COMPLETED'.",
+    );
     data.status = req.body.status;
   }
-  assert(Object.keys(data).length > 0, 400, 'Không có dữ liệu nào để cập nhật.');
+  assert(
+    Object.keys(data).length > 0,
+    400,
+    "Không có dữ liệu nào để cập nhật.",
+  );
 
-  let updated = await prisma.savingsGoal.update({ where: { id: existing.id }, data });
+  let updated = await prisma.savingsGoal.update({
+    where: { id: existing.id },
+    data,
+  });
 
   // Tự đánh dấu hoàn thành nếu đã đạt mục tiêu
-  if (updated.status !== 'COMPLETED' && updated.currentAmount >= updated.targetAmount) {
+  if (
+    updated.status !== "COMPLETED" &&
+    updated.currentAmount >= updated.targetAmount
+  ) {
     updated = await prisma.savingsGoal.update({
       where: { id: updated.id },
-      data: { status: 'COMPLETED' },
+      data: { status: "COMPLETED" },
     });
   }
 
@@ -113,18 +170,24 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
 
 // POST /api/savings/:id/deposit  body: { amount }
 exports.depositToGoal = asyncHandler(async (req, res) => {
-  requireFields(req.body, ['amount']);
+  requireFields(req.body, ["amount"]);
   const amount = toNumber(req.body.amount);
-  assert(Number.isFinite(amount) && amount > 0, 400, 'Số tiền đóng góp phải là số lớn hơn 0.');
+  assert(
+    Number.isFinite(amount) && amount > 0,
+    400,
+    "Số tiền đóng góp phải là số lớn hơn 0.",
+  );
   // Lấy ID mục tiêu từ URL.
   const depositId = req.params.id;
   // Tìm mục tiêu có:
   // 1. ID đúng với depositId.
   // 2. Thuộc người đang đăng nhập.
   const existing = isValidObjectId(depositId)
-    ? await prisma.savingsGoal.findFirst({ where: { id: depositId, userId: req.userId } })
+    ? await prisma.savingsGoal.findFirst({
+        where: { id: depositId, userId: req.userId },
+      })
     : null;
-  assert(existing, 404, 'Không tìm thấy mục tiêu tiết kiệm.');
+  assert(existing, 404, "Không tìm thấy mục tiêu tiết kiệm.");
   // Cập nhật mục tiêu trong database.
   let goal = await prisma.savingsGoal.update({
     where: { id: existing.id },
@@ -132,12 +195,23 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
   });
 
   // Đủ mục tiêu -> tự chuyển sang COMPLETED
-  if (goal.status !== 'COMPLETED' && goal.currentAmount >= goal.targetAmount) {
+  if (goal.status !== "COMPLETED" && goal.currentAmount >= goal.targetAmount) {
     goal = await prisma.savingsGoal.update({
       where: { id: goal.id },
-      data: { status: 'COMPLETED' },
+      data: { status: "COMPLETED" },
     });
   }
+
+  await prisma.transaction.create({
+    data: {
+      userId: req.userId,
+      amount,
+      type: "CHI",
+      category: "Khác",
+      description: `Tiết kiệm: ${goal.name}`,
+      date: new Date(),
+    },
+  });
 
   res.json({
     message: `Đã đóng góp thành công vào mục tiêu "${goal.name}".`,
@@ -153,7 +227,7 @@ exports.deleteSavingsGoal = asyncHandler(async (req, res) => {
   const deleted = isValidObjectId(id)
     ? await prisma.savingsGoal.deleteMany({ where: { id, userId: req.userId } })
     : { count: 0 };
-  assert(deleted.count > 0, 404, 'Không tìm thấy mục tiêu tiết kiệm.');
+  assert(deleted.count > 0, 404, "Không tìm thấy mục tiêu tiết kiệm.");
 
-  res.json({ message: 'Đã xóa mục tiêu tiết kiệm.' });
+  res.json({ message: "Đã xóa mục tiêu tiết kiệm." });
 });
