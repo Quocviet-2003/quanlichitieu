@@ -23,7 +23,8 @@ exports.createFixedExpense = async (req, res, next) => {
     const parsedAmount = parseFloat(amount);
     const parsedDeductDay = parseInt(deductDay) || 1;
 
-
+    // Kiểm tra dữ liệu nhận từ frontend. 
+    // Danh mục, số tiền, ngày trừ tiền bắt buộc phải có.
     if (!category || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ message: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.' });
     }

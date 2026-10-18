@@ -12,27 +12,33 @@ const { asyncHandler, assert, requireFields, startOfToday } = require('../utils/
 const { getSetting } = require('../utils/settings');
 const { callOllama, estimateCost } = require('../config/ollama');
 
-// Giữ nguyên giọng điệu như server cũ của FE
+function cleanAiResponse(text) {
+  if (!text || typeof text !== 'string') return '';
+  let str = text.replace(/\|\s*\|/g, '\n');
+  str = str.replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n$2');
+  str = str.replace(/\*\*/g, '');
+
+  const lines = str.split('\n').map((l) => {
+    let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, '');
+    if (/^[\s\-:|]+$/.test(line)) return '';
+    return line.replace(/\s*\|\s*/g, ' - ').trim();
+  }).filter(Boolean);
+
+  return lines.join('\n');
+}
+
 function buildSystemPrompt(summary) {
   return (
-    'Bạn là trợ lý tài chính cá nhân chuyên nghiệp bằng tiếng Việt.\n' +
-    'Dữ liệu tài chính của người dùng được cung cấp dưới dạng các BẢNG DỮ LIỆU chuẩn Markdown gồm:\n' +
-    '1. Bảng tổng hợp thu chi theo tháng\n' +
-    '2. Bảng chi tiêu theo danh mục qua các tháng\n' +
-    '3. Bảng theo dõi hạn mức ngân sách\n' +
-    '4. Bảng mục tiêu tiết kiệm\n' +
-    '5. Bảng dữ liệu chi tiết các giao dịch\n\n' +
-    'Hướng dẫn tra cứu và trả lời:\n' +
-    '- Tra cứu trực tiếp từ các cột và dòng trong bảng dữ liệu để trả lời chính xác từng giao dịch, ngày tháng, danh mục, số tiền.\n' +
-    '- Khi người dùng hỏi so sánh các tháng hoặc tổng hợp danh mục, hãy tổng hợp từ bảng và ưu tiên trả lời bằng BẢNG MARKDOWN rõ ràng, dễ nhìn.\n' +
-    '- Đưa ra phân tích chi tiết xu hướng tài chính và lời khuyên thiết thực dựa trên các bảng dữ liệu thực tế.\n\n' +
-    `DƯỚI ĐÂY LÀ CÁC BẢNG DỮ LIỆU TÀI CHÍNH:\n${summary || '(chưa có dữ liệu)'}`
+    'Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n' +
+    'Không dùng bảng biểu, không dùng ký tự |, không dùng ký tự **.\n' +
+    'Trình bày các ý bằng văn bản tự nhiên hoặc gạch đầu dòng -.\n' +
+    `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || '(chưa có dữ liệu)'}`
   );
 }
 
 async function checkQuota(userId) {
   const quota = parseInt((await getSetting('ai_daily_quota')) || '50', 10);
-  if (!Number.isFinite(quota) || quota <= 0) return; // quota <= 0 coi như không giới hạn
+  if (!Number.isFinite(quota) || quota <= 0) return;
 
   const used = await prisma.aiLog.count({
     where: { userId, endpoint: { in: ['ai-insights', 'ai-chat'] }, createdAt: { gte: startOfToday() } },
@@ -52,52 +58,40 @@ async function logUsage(userId, endpoint, result) {
       },
     });
   } catch (err) {
-    // Ghi log thất bại không làm hỏng kết quả đã tạo
     console.error('[AI LOG]', err.message);
   }
 }
 
-// POST /api/ai-insights
 exports.getInsights = asyncHandler(async (req, res) => {
   requireFields(req.body, ['summary']);
-  // Kiểm tra người dùng còn lượt AI không
   await checkQuota(req.userId);
-  // Tạo nội dung gửi cho mô hình AI
 
   const messages = [
     { role: 'system', content: buildSystemPrompt(String(req.body.summary)) },
     { role: 'user', content: 'Hãy phân tích chi tiết tình hình tài chính của tôi theo từng tháng, so sánh sự thay đổi giữa các tháng gần nhất, chỉ ra các khoản chi tiêu nhiều nhất và đưa ra lời khuyên cụ thể để tối ưu chi tiêu và tiết kiệm.' },
   ];
-  // Gọi Ollama và chờ kết quả
   const result = await callOllama(messages);
   await logUsage(req.userId, 'ai-insights', result);
 
-  // Gửi câu trả lời về frontend
-  res.json({ insight: result.content });
+  res.json({ insight: cleanAiResponse(result.content) });
 });
 
-// POST /api/ai-chat
 exports.chat = asyncHandler(async (req, res) => {
   requireFields(req.body, ['message']);
   assert(String(req.body.message).trim() !== '', 400, 'Câu hỏi không được để trống.');
   await checkQuota(req.userId);
 
-  // Lấy lịch sử từ frontend, Chỉ giữ tối đa 10 lượt hội thoại gần nhất, đúng như server cũ của FE
   const history = Array.isArray(req.body.history)
     ? req.body.history
       .filter((m) => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string')
       .slice(-10)
     : [];
-  // Chuẩn bị dữ liệu gửi cho Ollama
   const messages = [
-    // Vai trò AI + summary tài chính
     { role: 'system', content: buildSystemPrompt(String(req.body.summary || '')) },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: String(req.body.message) },
   ];
-  // Gọi Ollama và nhận kết quả
   const result = await callOllama(messages);
   await logUsage(req.userId, 'ai-chat', result);
-  // Trả kết quả cho frontend
-  res.json({ reply: result.content });
+  res.json({ reply: cleanAiResponse(result.content) });
 });

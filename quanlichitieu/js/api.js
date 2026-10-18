@@ -112,6 +112,7 @@ async function apiDeleteTransaction(id) {
   return apiFetch(`/api/transactions/${id}`, { method: 'DELETE' });
 }
 
+// --- NGÂN SÁCH (budget.html) ---
 async function apiGetBudgets(options = '') {
   if (typeof options === 'string') {
     const query = options ? `?month=${encodeURIComponent(options)}` : '';
@@ -228,6 +229,7 @@ async function apiGetCategories() {
   return apiFetch('/api/categories');
 }
 
+// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
 async function apiGetStatsSummary(options = null) {
   let query = '';
   if (typeof options === 'string') {
@@ -258,9 +260,12 @@ async function apiGetCategoryBreakdown(type = 'CHI', from = null, to = null) {
 
 // Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
 async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
+  // Ưu tiên khoảng ngày khi đủ hai ngày; khi đó tham số days không được dùng.
   if (startDate && endDate) {
     return apiFetch(`/api/stats/trend?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
   }
+  // Nhánh dự phòng: cần thực sự gọi hàm khi thiếu ngày mới gửi days xuống backend.
+  // Tổng quan hiện không gọi lại hàm khi người dùng xóa các ô ngày.
   return apiFetch(`/api/stats/trend?days=${days}`);
 }
 
@@ -310,17 +315,18 @@ async function apiChangePassword(oldPassword, newPassword) {
   });
 }
 
-// --- MOCK AI INSIGHTS & CHAT (Fallback nếu backend chưa hỗ trợ Markdown hoàn chỉnh) ---
 async function apiGetAiInsight(summaryText) {
-  return apiFetch('/api/ai/insight', {
+  const res = await apiFetch('/api/ai/insight', {
     method: 'POST',
     body: JSON.stringify({ summary: summaryText })
   });
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
 }
 
 async function apiChatWithAi(question, history, summaryText) {
-  return apiFetch('/api/ai/chat', {
+  const res = await apiFetch('/api/ai/chat', {
     method: 'POST',
     body: JSON.stringify({ question, history, summary: summaryText })
   });
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
 }

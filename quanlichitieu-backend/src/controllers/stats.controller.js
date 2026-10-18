@@ -9,6 +9,7 @@ const prisma = require('../config/db');
 const { asyncHandler, assert, monthRange, currentMonth, monthKey, dayKeyOf } = require('../utils/helpers');
 
 exports.getSummary = asyncHandler(async (req, res) => {
+
   let start, end;
   const queryMonth = req.query.month;
   const queryDate = req.query.date;
@@ -150,6 +151,9 @@ exports.getCategoryBreakdown = asyncHandler(async (req, res) => {
 
 // GET /api/stats/trend?days=30 : Thống kê xu hướng thu và chi theo từng ngày
 exports.getDailyTrend = asyncHandler(async (req, res) => {
+  // BỘ LỌC BIỂU ĐỒ ĐƯỜNG: đủ startDate/endDate thì dùng khoảng ngày;
+  // nếu thiếu một/cả hai thì dùng days, mặc định 30 khi days không hợp lệ/không có.
+  // Mặc định này chỉ chạy khi có request tới API; xóa ô ngày ở frontend hiện không gửi request.
   // B1. Đọc số ngày hoặc ngày bắt đầu/kết thúc từ URL
   let startDate = req.query.startDate;
   let endDate = req.query.endDate;
@@ -162,12 +166,15 @@ exports.getDailyTrend = asyncHandler(async (req, res) => {
     assert(startObj <= endObj, 400, "Ngày bắt đầu không được lớn hơn ngày kết thúc.");
     assert((endObj - startObj) / (1000 * 60 * 60 * 24) <= 365, 400, "Khoảng thời gian không được vượt quá 365 ngày.");
 
+    // Chia số mili giây chênh lệch cho số mili giây một ngày.
+    // i <= diffDays tạo ô cho cả ngày bắt đầu lẫn kết thúc, kể cả ngày không có giao dịch.
     const diffDays = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24));
     for (let i = 0; i <= diffDays; i++) {
       const d = new Date(startObj);
       d.setUTCDate(d.getUTCDate() + i);
       buckets.push({ key: dayKeyOf(d), start: d });
     }
+    // Dùng đầu ngày kế tiếp làm mốc loại trừ (lt), để lấy trọn ngày kết thúc.
     end = new Date(endObj);
     end.setUTCDate(end.getUTCDate() + 1);
   } else {
@@ -185,7 +192,8 @@ exports.getDailyTrend = asyncHandler(async (req, res) => {
     end.setUTCDate(end.getUTCDate() + 1);
   }
 
-  // B3. Lấy giao dịch của người dùng trong khoảng ngày cần thống kê
+  // B3. Lấy giao dịch của người dùng trong khoảng ngày cần thống kê.
+  // gte: >= đầu ngày đầu tiên; lt: < đầu ngày sau ngày cuối cùng.
   const transactions = await prisma.transaction.findMany({
     where: { userId: req.userId, date: { gte: buckets[0].start, lt: end } },
     select: { amount: true, type: true, date: true },

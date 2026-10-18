@@ -70,16 +70,31 @@ async function askOllama(messages) {
   return data.message?.content || 'AI không trả về nội dung nào.';
 }
 
-// Câu hệ thống dùng chung: nhắc AI luôn trả lời ngắn gọn, đúng vai trò trợ lý tài chính
+function cleanAiResponse(text) {
+  if (!text || typeof text !== 'string') return '';
+  let str = text.replace(/\|\s*\|/g, '\n');
+  str = str.replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n$2');
+  str = str.replace(/\*\*/g, '');
+
+  const lines = str.split('\n').map((l) => {
+    let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, '');
+    if (/^[\s\-:|]+$/.test(line)) return '';
+    return line.replace(/\s*\|\s*/g, ' - ').trim();
+  }).filter(Boolean);
+
+  return lines.join('\n');
+}
+
 function buildSystemMessage(summary) {
   return {
     role: 'system',
     content: 'Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n' +
+      'Không dùng bảng biểu, không dùng ký tự |, không dùng ký tự **.\n' +
+      'Trình bày các ý bằng văn bản tự nhiên hoặc gạch đầu dòng -.\n' +
       `Dưới đây là số liệu thu chi hiện tại của người dùng, dùng để trả lời khi cần:\n${summary}`
   };
 }
 
-// Xử lý route POST /api/ai-insights: nhận tóm tắt thu chi, trả về vài nhận xét của AI
 async function handleAiInsights(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
@@ -104,14 +119,13 @@ async function handleAiInsights(req, res) {
 
     const insight = await askOllama(messages);
     res.writeHead(200);
-    res.end(JSON.stringify({ insight }));
+    res.end(JSON.stringify({ insight: cleanAiResponse(insight) }));
   } catch (error) {
     res.writeHead(500);
     res.end(JSON.stringify({ error: error.message }));
   }
 }
 
-// Xử lý route POST /api/ai-chat: chatbot hỏi đáp tự do về tình hình thu chi
 async function handleAiChat(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
@@ -129,7 +143,6 @@ async function handleAiChat(req, res) {
       return;
     }
 
-    // Chỉ giữ tối đa 10 lượt hội thoại gần nhất để tránh gửi payload quá dài
     const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
 
     const messages = [
@@ -140,7 +153,7 @@ async function handleAiChat(req, res) {
 
     const reply = await askOllama(messages);
     res.writeHead(200);
-    res.end(JSON.stringify({ reply }));
+    res.end(JSON.stringify({ reply: cleanAiResponse(reply) }));
   } catch (error) {
     res.writeHead(500);
     res.end(JSON.stringify({ error: error.message }));
