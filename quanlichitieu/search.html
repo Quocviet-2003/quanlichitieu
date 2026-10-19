@@ -47,21 +47,13 @@
     <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
 
       <!-- Ô nhập từ khóa tìm kiếm, main.js lắng nghe sự kiện gõ phím ở đây -->
-      <div class="mb-6 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-        <div class="relative flex-1">
-          <i data-icon="search" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input id="search-input" type="text" placeholder="Tìm theo mô tả hoặc danh mục..." autocomplete="off"
-            class="form-input w-full pl-11 py-3 rounded-xl shadow-sm" />
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm text-slate-500 font-medium">Từ:</span>
-          <input type="date" id="search-start-date" class="form-input py-2 px-3 text-sm max-w-[140px] rounded-xl" />
-          <span class="text-slate-400">-</span>
-          <span class="text-sm text-slate-500 font-medium">Đến:</span>
-          <input type="date" id="search-end-date" class="form-input py-2 px-3 text-sm max-w-[140px] rounded-xl" />
-        </div>
+      <div class="mb-6 relative">
+        <i data-icon="search" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input id="search-input" type="text" placeholder="Tìm theo mô tả hoặc danh mục..." autocomplete="off"
+          class="form-input w-full pl-11 py-3 rounded-xl shadow-sm" />
       </div>
 
+      <!-- Dòng trạng thái: hiện số kết quả tìm được, main.js tự cập nhật -->
       <p id="search-status" class="text-sm text-slate-500 mb-4">Nhập từ khóa để tìm kiếm giao dịch.</p>
 
       <!-- Kết quả tìm kiếm -->

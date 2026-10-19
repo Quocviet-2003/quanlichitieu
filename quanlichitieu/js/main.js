@@ -553,65 +553,39 @@ document.addEventListener("layoutLoaded", () => {
   const initSearch = () => {
     const searchInput = document.getElementById("search-input");
     const statusEl = document.getElementById("search-status");
-    const startDateInput = document.getElementById("search-start-date");
-    const endDateInput = document.getElementById("search-end-date");
     if (!searchInput) return;
-
-    if (
-      startDateInput &&
-      endDateInput &&
-      !startDateInput.value &&
-      !endDateInput.value
-    ) {
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const fmt = (d) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      startDateInput.value = fmt(firstDay);
-      endDateInput.value = fmt(now);
-    }
 
     let allTransactions = [];
 
     const runSearch = () => {
       const keyword = searchInput.value.trim().toLowerCase();
-      let results = allTransactions;
 
-      if (startDateInput && startDateInput.value) {
-        results = results.filter(
-          (tx) => tx.date && tx.date.slice(0, 10) >= startDateInput.value,
-        );
+      if (!keyword) {
+        renderTxList([]);
+        if (statusEl) statusEl.textContent = "Nhập từ khóa để tìm kiếm giao dịch.";
+        return;
       }
-      if (endDateInput && endDateInput.value) {
-        results = results.filter(
-          (tx) => tx.date && tx.date.slice(0, 10) <= endDateInput.value,
-        );
-      }
-
-      if (keyword) {
-        results = results.filter(
-          (tx) =>
-            (tx.description || "").toLowerCase().includes(keyword) ||
-            (tx.category || "").toLowerCase().includes(keyword),
-        );
-      }
+      //loc//
+      const results = allTransactions.filter(
+        (tx) =>
+          (tx.description || "").toLowerCase().includes(keyword) ||
+          (tx.category || "").toLowerCase().includes(keyword),
+      );
 
       renderTxList(results);
       if (statusEl) {
-        statusEl.textContent = `Tìm thấy ${results.length} giao dịch${keyword ? ` phù hợp với "${searchInput.value}"` : ""}.`;
+        statusEl.textContent = `Tìm thấy ${results.length} giao dịch phù hợp với "${searchInput.value}".`;
       }
     };
 
+    // Tải toàn bộ giao dịch 1 lần, sau đó lọc ngay trên trình duyệt khi gõ (không gọi lại API)
     apiGetTransactions()
       .then((transactions) => {
         allTransactions = transactions;
-        runSearch();
       })
       .catch((error) => showToast(error.message, "error"));
 
-    searchInput.addEventListener("input", runSearch);
-    if (startDateInput) startDateInput.addEventListener("change", runSearch);
-    if (endDateInput) endDateInput.addEventListener("change", runSearch);
+    searchInput.addEventListener("input", runSearch); // chay//
   };
 
   // --- 6. TRANG THỐNG KÊ & BÁO CÁO: tính tổng thu/chi và vẽ biểu đồ ---
