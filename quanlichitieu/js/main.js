@@ -1492,12 +1492,14 @@ document.addEventListener("layoutLoaded", () => {
               (s.periodSavings !== undefined ? s.periodSavings : s.totalSavings) || 0,
             );
 
+          const now = new Date();
+          const currentM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const isCurrentMonth = !mVal || mVal === currentM;
+
           const subtitleEl = document.getElementById("dashboard-subtitle");
           if (subtitleEl && mVal) {
             const [y, m] = mVal.split("-");
-            const now = new Date();
-            const currentM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-            if (mVal === currentM) {
+            if (isCurrentMonth) {
               subtitleEl.textContent =
                 "Đây là tình hình tài chính của bạn trong tháng này.";
             } else {
@@ -1513,16 +1515,11 @@ document.addEventListener("layoutLoaded", () => {
           const surplusAmountEl = document.getElementById("surplus-amount");
           const surplusLabelEl = document.getElementById("surplus-banner-label");
           if (surplusBanner && surplusAmountEl) {
-            if (surplus > 0) {
+            // Chỉ hiển thị banner số dư còn thừa khi đang xem tháng hiện tại và có thặng dư > 0
+            if (isCurrentMonth && surplus > 0) {
               surplusAmountEl.textContent = formatCurrency(surplus);
-              if (surplusLabelEl && mVal) {
-                const [y, m] = mVal.split("-");
-                const now = new Date();
-                const currentM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-                surplusLabelEl.textContent =
-                  mVal === currentM
-                    ? "Số dư còn thừa tháng này"
-                    : `Số dư còn thừa tháng ${m}/${y}`;
+              if (surplusLabelEl) {
+                surplusLabelEl.textContent = "Số dư còn thừa tháng này";
               }
               surplusBanner.classList.remove("hidden");
               currentSurplusAmount = surplus;
