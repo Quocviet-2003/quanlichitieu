@@ -1460,9 +1460,12 @@ document.addEventListener("layoutLoaded", () => {
       const mVal = overviewMonthInput ? overviewMonthInput.value : null;
       apiGetStatsSummary(mVal)
         .then((s) => {
+          const balEl = document.getElementById("stat-balance");
           const incEl = document.getElementById("stat-income");
           const expEl = document.getElementById("stat-expense");
           const savEl = document.getElementById("stat-savings");
+          if (balEl)
+            balEl.textContent = formatCurrency(s.balance || 0);
           if (incEl)
             incEl.textContent = `+${formatCurrency(s.periodIncome || 0)}`;
           if (expEl)
@@ -1483,7 +1486,7 @@ document.addEventListener("layoutLoaded", () => {
               subtitleEl.textContent =
                 "Đây là tình hình tài chính của bạn trong tháng này.";
             } else {
-              subtitleEl.textContent = `Đây là tình hình tài chính của bạn trong tháng ${m}/${y}.`;
+              subtitleEl.textContent = `Đây là tình hình tài chính của bạn trong tháng ${parseInt(m, 10)}/${y}.`;
             }
           }
 
@@ -1495,11 +1498,17 @@ document.addEventListener("layoutLoaded", () => {
           const surplusAmountEl = document.getElementById("surplus-amount");
           const surplusLabelEl = document.getElementById("surplus-banner-label");
           if (surplusBanner && surplusAmountEl) {
-            // Chỉ hiển thị banner số dư còn thừa khi đang xem tháng hiện tại và có thặng dư > 0
-            if (isCurrentMonth && surplus > 0) {
+            if (surplus > 0) {
               surplusAmountEl.textContent = formatCurrency(surplus);
               if (surplusLabelEl) {
-                surplusLabelEl.textContent = "Số dư còn thừa tháng này";
+                if (mVal) {
+                  const [y, m] = mVal.split("-");
+                  surplusLabelEl.textContent = isCurrentMonth
+                    ? "Số dư còn thừa tháng này"
+                    : `Số dư còn thừa tháng ${parseInt(m, 10)}/${y}`;
+                } else {
+                  surplusLabelEl.textContent = "Số dư còn thừa tháng này";
+                }
               }
               surplusBanner.classList.remove("hidden");
               currentSurplusAmount = surplus;
@@ -1535,11 +1544,16 @@ document.addEventListener("layoutLoaded", () => {
 
     const updateAllocatedTotals = () => {
       let total = 0;
+      let hasOverNeeded = false;
       const inputs = goalsContainer
         ? goalsContainer.querySelectorAll(".goal-allocation-input")
         : [];
       inputs.forEach((inp) => {
         const val = parseFloat(inp.value) || 0;
+        const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+        if (val > maxNeeded) {
+          hasOverNeeded = true;
+        }
         total += Math.max(0, val);
       });
 
@@ -1558,7 +1572,7 @@ document.addEventListener("layoutLoaded", () => {
       }
 
       if (confirmSurplusBtn) {
-        confirmSurplusBtn.disabled = total <= 0 || total > currentSurplusAmount;
+        confirmSurplusBtn.disabled = total <= 0 || total > currentSurplusAmount || hasOverNeeded;
         if (confirmSurplusBtn.disabled) {
           confirmSurplusBtn.classList.add("opacity-50", "cursor-not-allowed");
         } else {
@@ -1597,6 +1611,10 @@ document.addEventListener("layoutLoaded", () => {
                 0,
                 g.targetAmount - g.currentAmount,
               );
+              const initialVal =
+                currentGoals.length === 1
+                  ? Math.min(currentSurplusAmount, remainingNeeded)
+                  : 0;
               return `
               <div class="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-200 transition-colors">
                 <div class="flex items-start justify-between gap-2 mb-2">
@@ -1614,9 +1632,11 @@ document.addEventListener("layoutLoaded", () => {
                     class="form-input text-sm py-1.5 px-3 goal-allocation-input w-full font-medium"
                     placeholder="Số tiền phân bổ..."
                     min="0"
+                    max="${remainingNeeded}"
                     step="1000"
                     data-goal-id="${g.id}"
-                    value="${currentGoals.length === 1 ? currentSurplusAmount : 0}"
+                    data-max-needed="${remainingNeeded}"
+                    value="${initialVal}"
                   />
                 </div>
               </div>
@@ -1627,7 +1647,15 @@ document.addEventListener("layoutLoaded", () => {
           goalsContainer
             .querySelectorAll(".goal-allocation-input")
             .forEach((inp) => {
-              inp.addEventListener("input", updateAllocatedTotals);
+              inp.addEventListener("input", () => {
+                const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+                let val = parseFloat(inp.value) || 0;
+                if (val > maxNeeded) {
+                  inp.value = maxNeeded;
+                  showToast(`Mục tiêu này chỉ còn thiếu tối đa ${formatCurrency(maxNeeded)}`, "warning");
+                }
+                updateAllocatedTotals();
+              });
             });
 
           goalsContainer
@@ -1647,11 +1675,11 @@ document.addEventListener("layoutLoaded", () => {
                       if (i !== input)
                         currentOthersTotal += parseFloat(i.value) || 0;
                     });
-                  const canFill = Math.max(
+                  const maxCanFill = Math.max(
                     0,
-                    Math.min(needed, currentSurplusAmount - currentOthersTotal),
+                    currentSurplusAmount - currentOthersTotal,
                   );
-                  input.value = canFill > 0 ? canFill : needed;
+                  input.value = Math.min(needed, maxCanFill);
                   updateAllocatedTotals();
                 }
               });
@@ -1668,19 +1696,23 @@ document.addEventListener("layoutLoaded", () => {
     if (splitEvenBtn) {
       splitEvenBtn.addEventListener("click", () => {
         if (!currentGoals.length || currentSurplusAmount <= 0) return;
-        const count = currentGoals.length;
-        const eachAmount =
-          Math.floor(currentSurplusAmount / count / 1000) * 1000;
-        let remainder = currentSurplusAmount - eachAmount * count;
-
+        let pool = currentSurplusAmount;
         const inputs = goalsContainer
           ? goalsContainer.querySelectorAll(".goal-allocation-input")
           : [];
-        inputs.forEach((inp, idx) => {
-          let amt = eachAmount;
-          if (idx === 0) amt += remainder;
-          inp.value = amt;
-        });
+        inputs.forEach((inp) => (inp.value = 0));
+
+        let remainingGoals = currentGoals.length;
+        for (let i = 0; i < currentGoals.length; i++) {
+          const inp = inputs[i];
+          const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+          if (pool <= 0 || maxNeeded <= 0) continue;
+          const share = Math.floor(pool / remainingGoals / 1000) * 1000;
+          const allocated = Math.min(share, maxNeeded);
+          inp.value = allocated;
+          pool -= allocated;
+          remainingGoals--;
+        }
         updateAllocatedTotals();
       });
     }
@@ -1726,6 +1758,18 @@ document.addEventListener("layoutLoaded", () => {
             "error",
           );
           return;
+        }
+
+        for (const a of allocations) {
+          const goal = currentGoals.find((g) => g.id === a.goalId);
+          const needed = goal ? Math.max(0, goal.targetAmount - goal.currentAmount) : 0;
+          if (a.amount > needed) {
+            showToast(
+              `Số tiền phân bổ cho "${goal?.name}" không được vượt quá số tiền còn thiếu (${formatCurrency(needed)})`,
+              "error",
+            );
+            return;
+          }
         }
 
         confirmSurplusBtn.disabled = true;
@@ -2164,7 +2208,6 @@ document.addEventListener("layoutLoaded", () => {
             <span class="flex items-center gap-1"><i data-icon="calendar" class="w-3 h-3"></i> ${fmtDeadline(goal.deadline)}</span>
             <div class="flex items-center gap-2">
               ${goal.monthlyContribution ? `<span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">+${formatCurrency(goal.monthlyContribution)}/tháng</span>` : ""}
-              ${completed ? "" : `<button class="deposit-btn btn btn-secondary !px-3 !py-1 !text-xs" data-id="${goal.id}" data-name="${goal.name}">Đóng góp</button>`}
               <button class="delete-goal-btn text-rose-400 hover:text-rose-600 font-medium px-1" data-id="${goal.id}">Xoá</button>
             </div>
           </div>
@@ -2249,15 +2292,6 @@ document.addEventListener("layoutLoaded", () => {
         '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có mục tiêu tiết kiệm nào (hoặc không khớp với bộ lọc).</p>';
       renderIcons(listEl);
 
-      listEl.querySelectorAll(".deposit-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          depositGoalId = btn.dataset.id;
-          document.getElementById("deposit-goal-name").textContent =
-            btn.dataset.name || "";
-          document.getElementById("deposit-amount").value = "";
-          depositModal?.open();
-        });
-      });
 
       listEl.querySelectorAll(".delete-goal-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -2392,33 +2426,287 @@ document.addEventListener("layoutLoaded", () => {
         }
       });
 
-    document
-      .getElementById("save-deposit-btn")
-      ?.addEventListener("click", async () => {
-        const amount = parseFloat(
-          document.getElementById("deposit-amount").value,
-        );
-        // Nếu chưa có ID mục tiêu được chọn thì dừng.
-        if (!depositGoalId) return;
-        if (!amount || amount <= 0) {
-          showToast("Vui lòng nhập số tiền hợp lệ", "error");
+    const allocateModal = bindMiniModal("allocate-modal");
+    const openAllocateBtn = document.getElementById("open-allocate-btn");
+    const allocateGoalsContainer = document.getElementById(
+      "allocate-goals-container",
+    );
+    const allocateAvailableEl = document.getElementById(
+      "allocate-available-balance",
+    );
+    const allocateTotalEl = document.getElementById("allocate-total-amount");
+    const allocateRemainingEl = document.getElementById(
+      "allocate-remaining-balance",
+    );
+    const allocateSplitEvenBtn = document.getElementById(
+      "allocate-split-even-btn",
+    );
+    const allocateClearBtn = document.getElementById("allocate-clear-btn");
+    const allocateConfirmBtn = document.getElementById("allocate-confirm-btn");
+
+    let currentAllocateBalance = 0;
+    let allocateGoalsList = [];
+
+    const updateAllocateTotals = () => {
+      let total = 0;
+      let hasOverLimit = false;
+      const inputs = allocateGoalsContainer
+        ? allocateGoalsContainer.querySelectorAll(".allocate-goal-input")
+        : [];
+      inputs.forEach((inp) => {
+        const val = parseFloat(inp.value) || 0;
+        const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+        if (val > maxNeeded) {
+          hasOverLimit = true;
+        }
+        total += Math.max(0, val);
+      });
+
+      if (allocateTotalEl) allocateTotalEl.textContent = formatCurrency(total);
+
+      const rem = currentAllocateBalance - total;
+      if (allocateRemainingEl) {
+        if (rem < 0) {
+          allocateRemainingEl.textContent = `(Vượt quá: ${formatCurrency(Math.abs(rem))})`;
+          allocateRemainingEl.className = "text-rose-600 font-semibold ml-1";
+        } else {
+          allocateRemainingEl.textContent = `(Còn lại: ${formatCurrency(rem)})`;
+          allocateRemainingEl.className = "text-slate-500 ml-1";
+        }
+      }
+
+      if (allocateConfirmBtn) {
+        allocateConfirmBtn.disabled =
+          total <= 0 || total > currentAllocateBalance || hasOverLimit;
+        if (allocateConfirmBtn.disabled) {
+          allocateConfirmBtn.classList.add("opacity-50", "cursor-not-allowed");
+        } else {
+          allocateConfirmBtn.classList.remove(
+            "opacity-50",
+            "cursor-not-allowed",
+          );
+        }
+      }
+    };
+
+    if (openAllocateBtn) {
+      openAllocateBtn.addEventListener("click", async () => {
+        if (!allocateGoalsContainer) return;
+        allocateGoalsContainer.innerHTML =
+          '<p class="text-sm text-slate-400 py-3 text-center">Đang tải dữ liệu...</p>';
+        allocateModal?.open();
+
+        try {
+          const [stats, goals] = await Promise.all([
+            apiGetStatsSummary(),
+            apiGetSavingsGoals(),
+          ]);
+
+          currentAllocateBalance = Math.max(0, stats.balance || 0);
+          if (allocateAvailableEl) {
+            allocateAvailableEl.textContent = formatCurrency(currentAllocateBalance);
+          }
+
+          allocateGoalsList = goals.filter((g) => g.status !== "COMPLETED");
+          if (!allocateGoalsList.length) {
+            allocateGoalsContainer.innerHTML =
+              '<p class="text-sm text-slate-500 py-4 text-center">Bạn chưa có mục tiêu tiết kiệm nào đang thực hiện.</p>';
+            updateAllocateTotals();
+            return;
+          }
+
+          allocateGoalsContainer.innerHTML = allocateGoalsList
+            .map((g) => {
+              const remainingNeeded = Math.max(
+                0,
+                g.targetAmount - g.currentAmount,
+              );
+              const initialVal =
+                allocateGoalsList.length === 1
+                  ? Math.min(currentAllocateBalance, remainingNeeded)
+                  : 0;
+              return `
+              <div class="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-200 transition-colors">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <h4 class="text-sm font-semibold text-slate-900">${g.name}</h4>
+                    <p class="text-xs text-slate-500">Đã có: ${formatCurrency(g.currentAmount)} / ${formatCurrency(g.targetAmount)} (${g.percentComplete || 0}%)</p>
+                  </div>
+                  <button type="button" class="btn-fill-allocate text-xs text-emerald-600 hover:text-emerald-700 font-medium py-0.5 px-1.5 rounded hover:bg-emerald-50" data-goal-id="${g.id}" data-needed="${remainingNeeded}">
+                    Thiếu: ${formatCurrency(remainingNeeded)}
+                  </button>
+                </div>
+                <div class="relative">
+                  <input
+                    type="number"
+                    class="form-input text-sm py-1.5 px-3 allocate-goal-input w-full font-medium"
+                    placeholder="Số tiền phân bổ..."
+                    min="0"
+                    max="${remainingNeeded}"
+                    step="1000"
+                    data-goal-id="${g.id}"
+                    data-max-needed="${remainingNeeded}"
+                    value="${initialVal}"
+                  />
+                </div>
+              </div>
+            `;
+            })
+            .join("");
+
+          allocateGoalsContainer
+            .querySelectorAll(".allocate-goal-input")
+            .forEach((inp) => {
+              inp.addEventListener("input", () => {
+                const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+                let val = parseFloat(inp.value) || 0;
+                if (val > maxNeeded) {
+                  inp.value = maxNeeded;
+                  showToast(
+                    `Mục tiêu này chỉ còn thiếu tối đa ${formatCurrency(maxNeeded)}`,
+                    "warning",
+                  );
+                }
+                updateAllocateTotals();
+              });
+            });
+
+          allocateGoalsContainer
+            .querySelectorAll(".btn-fill-allocate")
+            .forEach((btn) => {
+              btn.addEventListener("click", () => {
+                const gid = btn.dataset.goalId;
+                const needed = parseFloat(btn.dataset.needed) || 0;
+                const input = allocateGoalsContainer.querySelector(
+                  `.allocate-goal-input[data-goal-id="${gid}"]`,
+                );
+                if (input) {
+                  let othersTotal = 0;
+                  allocateGoalsContainer
+                    .querySelectorAll(".allocate-goal-input")
+                    .forEach((i) => {
+                      if (i !== input) othersTotal += parseFloat(i.value) || 0;
+                    });
+                  const maxCanFill = Math.max(
+                    0,
+                    currentAllocateBalance - othersTotal,
+                  );
+                  input.value = Math.min(needed, maxCanFill);
+                  updateAllocateTotals();
+                }
+              });
+            });
+
+          updateAllocateTotals();
+        } catch (e) {
+          allocateGoalsContainer.innerHTML =
+            '<p class="text-sm text-rose-500 py-3 text-center">Không thể tải thông tin</p>';
+        }
+      });
+    }
+
+    if (allocateSplitEvenBtn) {
+      allocateSplitEvenBtn.addEventListener("click", () => {
+        if (!allocateGoalsList.length || currentAllocateBalance <= 0) return;
+        let pool = currentAllocateBalance;
+        const inputs = allocateGoalsContainer
+          ? allocateGoalsContainer.querySelectorAll(".allocate-goal-input")
+          : [];
+        inputs.forEach((inp) => (inp.value = 0));
+
+        let remainingGoals = allocateGoalsList.length;
+        for (let i = 0; i < allocateGoalsList.length; i++) {
+          const inp = inputs[i];
+          const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+          if (pool <= 0 || maxNeeded <= 0) continue;
+          const share = Math.floor(pool / remainingGoals / 1000) * 1000;
+          const allocated = Math.min(share, maxNeeded);
+          inp.value = allocated;
+          pool -= allocated;
+          remainingGoals--;
+        }
+        updateAllocateTotals();
+      });
+    }
+
+    if (allocateClearBtn) {
+      allocateClearBtn.addEventListener("click", () => {
+        const inputs = allocateGoalsContainer
+          ? allocateGoalsContainer.querySelectorAll(".allocate-goal-input")
+          : [];
+        inputs.forEach((inp) => (inp.value = 0));
+        updateAllocateTotals();
+      });
+    }
+
+    if (allocateConfirmBtn) {
+      allocateConfirmBtn.addEventListener("click", async () => {
+        const inputs = allocateGoalsContainer
+          ? allocateGoalsContainer.querySelectorAll(".allocate-goal-input")
+          : [];
+        const allocations = [];
+        inputs.forEach((inp) => {
+          const amt = parseFloat(inp.value) || 0;
+          if (amt > 0) {
+            allocations.push({ goalId: inp.dataset.goalId, amount: amt });
+          }
+        });
+
+        if (!allocations.length) {
+          showToast(
+            "Vui lòng phân bổ số tiền lớn hơn 0 cho ít nhất một mục tiêu",
+            "error",
+          );
           return;
         }
 
-        try {
-          const res = await apiDepositToGoal(depositGoalId, amount);
-          depositModal?.close();
+        const totalAllocated = allocations.reduce(
+          (sum, a) => sum + a.amount,
+          0,
+        );
+        if (totalAllocated > currentAllocateBalance) {
           showToast(
-            res.goal?.status === "COMPLETED"
-              ? `Chúc mừng! Mục tiêu "${res.goal.name}" đã hoàn thành!`
-              : "Đóng góp thành công!",
+            "Tổng số tiền phân bổ không được vượt quá số dư khả dụng",
+            "error",
           );
+          return;
+        }
+
+        for (const a of allocations) {
+          const goal = allocateGoalsList.find((g) => g.id === a.goalId);
+          const needed = goal
+            ? Math.max(0, goal.targetAmount - goal.currentAmount)
+            : 0;
+          if (a.amount > needed) {
+            showToast(
+              `Số tiền phân bổ cho "${goal?.name}" không được vượt quá số tiền còn thiếu (${formatCurrency(needed)})`,
+              "error",
+            );
+            return;
+          }
+        }
+
+        allocateConfirmBtn.disabled = true;
+        allocateConfirmBtn.innerText = "Đang chuyển...";
+
+        try {
+          await Promise.all(
+            allocations.map((a) => apiDepositToGoal(a.goalId, a.amount)),
+          );
+          showToast(
+            "Đã phân bổ số dư vào các mục tiêu tiết kiệm thành công!",
+          );
+          allocateModal?.close();
           renderGoals();
           refreshNotifications();
-        } catch (error) {
-          showToast(error.message, "error");
+        } catch (err) {
+          showToast(err.message, "error");
+        } finally {
+          allocateConfirmBtn.disabled = false;
+          allocateConfirmBtn.innerText = "Xác nhận phân bổ";
         }
       });
+    }
   };
 
   // --- 14. TRANG CÀI ĐẶT TÀI KHOẢN: chuyển tab, đổi mật khẩu ---

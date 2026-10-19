@@ -177,24 +177,35 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
     400,
     "Số tiền đóng góp phải là số lớn hơn 0.",
   );
-  // Lấy ID mục tiêu từ URL.
   const depositId = req.params.id;
-  // Tìm mục tiêu có:
-  // 1. ID đúng với depositId.
-  // 2. Thuộc người đang đăng nhập.
   const existing = isValidObjectId(depositId)
     ? await prisma.savingsGoal.findFirst({
         where: { id: depositId, userId: req.userId },
       })
     : null;
   assert(existing, 404, "Không tìm thấy mục tiêu tiết kiệm.");
-  // Cập nhật mục tiêu trong database.
+
+  const remainingNeeded = Math.max(0, existing.targetAmount - existing.currentAmount);
+  assert(amount <= remainingNeeded, 400, "Số tiền đóng góp vượt quá số tiền còn thiếu của mục tiêu.");
+
+  const [incAgg, expAgg] = await Promise.all([
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: req.userId, type: "THU" },
+    }),
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: req.userId, type: "CHI" },
+    }),
+  ]);
+  const currentBalance = (incAgg._sum.amount || 0) - (expAgg._sum.amount || 0);
+  assert(amount <= currentBalance, 400, "Số dư tài khoản không đủ để đóng góp.");
+
   let goal = await prisma.savingsGoal.update({
     where: { id: existing.id },
     data: { currentAmount: { increment: amount } },
   });
 
-  // Đủ mục tiêu -> tự chuyển sang COMPLETED
   if (goal.status !== "COMPLETED" && goal.currentAmount >= goal.targetAmount) {
     goal = await prisma.savingsGoal.update({
       where: { id: goal.id },

@@ -86,7 +86,9 @@
       <!-- ====== NỘI DUNG TRANG TỔNG QUAN (DASHBOARD) ====== -->
       <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
         <!-- Lời chào và chọn tháng xem tổng quan -->
-        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div
+          class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4"
+        >
           <div>
             <h2
               id="dashboard-greeting"
@@ -99,7 +101,9 @@
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm text-slate-500 font-medium">Xem theo tháng:</span>
+            <span class="text-sm text-slate-500 font-medium"
+              >Xem theo tháng:</span
+            >
             <input
               type="month"
               id="overview-month"
@@ -117,7 +121,10 @@
               <i data-icon="wallet" class="w-5 h-5"></i>
             </div>
             <div>
-              <p id="surplus-banner-label" class="text-xs text-emerald-800 font-medium">
+              <p
+                id="surplus-banner-label"
+                class="text-xs text-emerald-800 font-medium"
+              >
                 Số dư còn thừa tháng này
               </p>
               <h4
@@ -289,7 +296,12 @@
                 Chuyển số dư thừa vào tiết kiệm
               </h2>
               <p class="text-xs text-slate-500 mt-0.5">
-                Số dư khả dụng: <span id="transfer-surplus-available" class="font-bold text-emerald-600">0 ₫</span>
+                Số dư khả dụng:
+                <span
+                  id="transfer-surplus-available"
+                  class="font-bold text-emerald-600"
+                  >0 ₫</span
+                >
               </p>
             </div>
             <button
@@ -300,10 +312,21 @@
           </div>
 
           <div class="p-5 overflow-y-auto space-y-4 flex-1">
-            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-gray-100">
+            <div
+              class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-gray-100"
+            >
               <div class="text-xs text-slate-600">
-                Đã phân bổ: <span id="transfer-surplus-total" class="font-semibold text-slate-900">0 ₫</span>
-                <span id="transfer-surplus-remaining" class="text-slate-500 ml-1">(Còn lại: 0 ₫)</span>
+                Đã phân bổ:
+                <span
+                  id="transfer-surplus-total"
+                  class="font-semibold text-slate-900"
+                  >0 ₫</span
+                >
+                <span
+                  id="transfer-surplus-remaining"
+                  class="text-slate-500 ml-1"
+                  >(Còn lại: 0 ₫)</span
+                >
               </div>
               <div class="flex items-center gap-2">
                 <button
@@ -324,7 +347,9 @@
             </div>
 
             <div>
-              <label class="form-label-caps mb-2 block">Chọn mục tiêu & số tiền phân bổ</label>
+              <label class="form-label-caps mb-2 block"
+                >Chọn mục tiêu & số tiền phân bổ</label
+              >
               <div id="transfer-surplus-goals-container" class="space-y-3">
                 <!-- Danh sách mục tiêu tiết kiệm -->
               </div>

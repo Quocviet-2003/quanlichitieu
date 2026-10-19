@@ -1,210 +1,375 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tiết kiệm - ChiLotus</title>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tiết kiệm - ChiLotus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                50: "#faf8f2",
+                100: "#f1ede2",
+                200: "#ddd6c6",
+                300: "#c8bfa9",
+                400: "#988f77",
+                500: "#7a715c",
+                600: "#5f5847",
+                700: "#4a4437",
+                800: "#33302a",
+                900: "#22201b",
+              },
+              gray: { 100: "#efeadd", 200: "#ddd6c6" },
+              blue: {
+                50: "#e9f2ec",
+                200: "#bcd8c6",
+                400: "#4a8a68",
+                500: "#2f7050",
+                600: "#24593f",
+                700: "#1d4934",
+              },
+              emerald: {
+                50: "#ecf3ea",
+                200: "#cadfce",
+                500: "#2f7050",
+                600: "#24593f",
+              },
+              rose: {
+                50: "#f9ebe6",
+                100: "#f3dcd4",
+                200: "#f0cdc2",
+                400: "#cf6b52",
+                500: "#bc5539",
+                600: "#a34428",
+              },
+              amber: {
+                50: "#faf1dc",
+                200: "#ecdcae",
+                400: "#d99e33",
+                500: "#c4871f",
+                600: "#a57218",
+              },
+              purple: { 50: "#efeaf6", 600: "#6d5a8e" },
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- style.css: style nền chung. components.css: các class dùng chung (card, btn, nav-link...) -->
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/components.css" />
+  </head>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
+  <body
+    class="antialiased font-sans flex flex-col md:flex-row min-h-screen relative"
+  >
+    <!-- Nơi hiện thông báo (toast) góc phải màn hình -->
+    <div
+      id="toast-container"
+      class="fixed top-20 right-4 z-50 flex flex-col gap-2"
+    ></div>
 
-        extend: {
-          colors: {
-            slate: { 50: '#faf8f2', 100: '#f1ede2', 200: '#ddd6c6', 300: '#c8bfa9', 400: '#988f77', 500: '#7a715c', 600: '#5f5847', 700: '#4a4437', 800: '#33302a', 900: '#22201b' },
-            gray: { 100: '#efeadd', 200: '#ddd6c6' },
-            blue: { 50: '#e9f2ec', 200: '#bcd8c6', 400: '#4a8a68', 500: '#2f7050', 600: '#24593f', 700: '#1d4934' },
-            emerald: { 50: '#ecf3ea', 200: '#cadfce', 500: '#2f7050', 600: '#24593f' },
-            rose: { 50: '#f9ebe6', 100: '#f3dcd4', 200: '#f0cdc2', 400: '#cf6b52', 500: '#bc5539', 600: '#a34428' },
-            amber: { 50: '#faf1dc', 200: '#ecdcae', 400: '#d99e33', 500: '#c4871f', 600: '#a57218' },
-            purple: { 50: '#efeaf6', 600: '#6d5a8e' }
-          }
-        }
-      }
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Các khối layout dùng chung, được layout.js tải và chèn vào -->
+    <div id="layout-sidebar"></div>
+    <div id="layout-bottom-nav"></div>
 
-  <!-- style.css: style nền chung. components.css: các class dùng chung (card, btn, nav-link...) -->
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/components.css">
-</head>
+    <div class="flex-1 md:ml-64 flex flex-col min-h-screen pb-16 md:pb-0">
+      <div id="layout-header"></div>
 
-<body class="antialiased font-sans flex flex-col md:flex-row min-h-screen relative">
-
-  <!-- Nơi hiện thông báo (toast) góc phải màn hình -->
-  <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2"></div>
-
-  <!-- Các khối layout dùng chung, được layout.js tải và chèn vào -->
-  <div id="layout-sidebar"></div>
-  <div id="layout-bottom-nav"></div>
-
-  <div class="flex-1 md:ml-64 flex flex-col min-h-screen pb-16 md:pb-0">
-    <div id="layout-header"></div>
-
-    <!-- ====== NỘI DUNG TRANG TIẾT KIỆM ====== -->
-    <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-
-      <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <p class="text-sm text-slate-500">Theo dõi tiến độ các mục tiêu tài chính của bạn.</p>
-        <button id="add-goal-btn" class="btn btn-secondary">
-          <i data-icon="plus" class="w-4 h-4"></i>
-          <span>Thêm mục tiêu</span>
-        </button>
-      </div>
-
-      <!-- Bộ lọc: Dropdown Lọc + Chọn tháng -->
-      <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div class="flex gap-2 w-full md:w-auto items-center flex-wrap">
-          <div class="relative">
-            <button id="savings-filter-btn" type="button" class="btn btn-secondary flex-1 md:flex-none justify-center">
-              <i data-icon="filter" class="w-4 h-4"></i>
-              <span>Bộ lọc</span>
-              <span id="savings-filter-badge" class="hidden ml-1 px-1.5 py-0.5 text-[11px] font-bold rounded-full bg-emerald-600 text-white leading-none">0</span>
+      <!-- ====== NỘI DUNG TRANG TIẾT KIỆM ====== -->
+      <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <div
+          class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+          <p class="text-sm text-slate-500">
+            Theo dõi tiến độ các mục tiêu tài chính của bạn.
+          </p>
+          <div class="flex items-center gap-3">
+            <button
+              id="open-allocate-btn"
+              type="button"
+              class="btn btn-secondary !bg-emerald-600 !text-white hover:!bg-emerald-700"
+            >
+              <i data-icon="wallet" class="w-4 h-4"></i>
+              <span>Phân bổ tiết kiệm</span>
             </button>
-            <div id="savings-filter-panel"
-              class="hidden absolute left-0 top-full mt-2 w-80 card p-4 z-20 space-y-3.5 shadow-lg bg-white border border-gray-200">
-              <div>
-                <label class="form-label-caps">Trạng thái</label>
-                <select id="savings-status-filter" class="form-input">
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="IN_PROGRESS">Đang thực hiện</option>
-                  <option value="COMPLETED">Đã hoàn thành</option>
-                </select>
-              </div>
-              <div>
-                <label class="form-label-caps">Kỳ hạn</label>
-                <select id="savings-term-filter" class="form-input">
-                  <option value="">Tất cả kỳ hạn</option>
-                  <option value="SHORT_TERM">Ngắn hạn (&lt; 1 năm)</option>
-                  <option value="LONG_TERM">Dài hạn (&ge; 1 năm)</option>
-                </select>
-              </div>
-              <div>
-                <label class="form-label-caps">Hạn chót</label>
-                <div class="flex items-center gap-2">
-                  <input type="date" id="savings-deadline-start" class="form-input py-1 px-2 text-xs" />
-                  <span class="text-slate-400">-</span>
-                  <input type="date" id="savings-deadline-end" class="form-input py-1 px-2 text-xs" />
+            <button id="add-goal-btn" class="btn btn-secondary">
+              <i data-icon="plus" class="w-4 h-4"></i>
+              <span>Thêm mục tiêu</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bộ lọc: Dropdown Lọc + Chọn tháng -->
+        <div
+          class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+        >
+          <div class="flex gap-2 w-full md:w-auto items-center flex-wrap">
+            <div class="relative">
+              <button
+                id="savings-filter-btn"
+                type="button"
+                class="btn btn-secondary flex-1 md:flex-none justify-center"
+              >
+                <i data-icon="filter" class="w-4 h-4"></i>
+                <span>Bộ lọc</span>
+                <span
+                  id="savings-filter-badge"
+                  class="hidden ml-1 px-1.5 py-0.5 text-[11px] font-bold rounded-full bg-emerald-600 text-white leading-none"
+                  >0</span
+                >
+              </button>
+              <div
+                id="savings-filter-panel"
+                class="hidden absolute left-0 top-full mt-2 w-80 card p-4 z-20 space-y-3.5 shadow-lg bg-white border border-gray-200"
+              >
+                <div>
+                  <label class="form-label-caps">Trạng thái</label>
+                  <select id="savings-status-filter" class="form-input">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="IN_PROGRESS">Đang thực hiện</option>
+                    <option value="COMPLETED">Đã hoàn thành</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label-caps">Kỳ hạn</label>
+                  <select id="savings-term-filter" class="form-input">
+                    <option value="">Tất cả kỳ hạn</option>
+                    <option value="SHORT_TERM">Ngắn hạn (&lt; 1 năm)</option>
+                    <option value="LONG_TERM">Dài hạn (&ge; 1 năm)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label-caps">Ngày hết hạn</label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="date"
+                      id="savings-deadline-start"
+                      class="form-input py-1 px-2 text-xs"
+                    />
+                    <span class="text-slate-400">-</span>
+                    <input
+                      type="date"
+                      id="savings-deadline-end"
+                      class="form-input py-1 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+                <div
+                  class="flex justify-between items-center pt-2 border-t border-gray-100"
+                >
+                  <button
+                    id="savings-filter-clear-btn"
+                    type="button"
+                    class="text-xs text-slate-500 hover:text-rose-500 underline"
+                  >
+                    Xoá lọc
+                  </button>
+                  <button
+                    id="savings-filter-close-btn"
+                    type="button"
+                    class="btn btn-secondary py-1 px-3 text-xs"
+                  >
+                    Đóng
+                  </button>
                 </div>
               </div>
-              <div class="flex justify-between items-center pt-2 border-t border-gray-100">
-                <button id="savings-filter-clear-btn" type="button"
-                  class="text-xs text-slate-500 hover:text-rose-500 underline">Xoá lọc</button>
-                <button id="savings-filter-close-btn" type="button"
-                  class="btn btn-secondary py-1 px-3 text-xs">Đóng</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-slate-500 font-medium">Tháng:</span>
+              <input
+                type="month"
+                id="savings-month-filter"
+                class="form-input py-1.5 px-3 rounded-lg text-sm bg-white border border-gray-200 max-w-[160px]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="goal-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+      </main>
+    </div>
+
+    <div id="goal-modal" class="fixed inset-0 z-50 hidden">
+      <div
+        class="mini-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-300"
+      ></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          class="mini-card card bg-white w-full max-w-md rounded-2xl shadow-xl transform scale-95 opacity-0 transition-all duration-300"
+        >
+          <div
+            class="flex justify-between items-center p-5 border-b border-gray-100"
+          >
+            <h2 class="text-lg font-semibold text-slate-900">
+              Thêm mục tiêu tiết kiệm
+            </h2>
+            <button
+              class="close-mini-btn p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+            >
+              <i data-icon="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+          <div class="p-5 space-y-5">
+            <div>
+              <label class="form-label-caps">Tên mục tiêu</label>
+              <input
+                type="text"
+                id="goal-name"
+                placeholder="VD: Mua Laptop mới"
+                class="form-input"
+              />
+            </div>
+            <div>
+              <label class="form-label-caps">Phân loại kỳ hạn</label>
+              <select id="goal-term-type" class="form-input">
+                <option value="SHORT_TERM">Ngắn hạn (< 1 năm)</option>
+                <option value="LONG_TERM">Dài hạn (>= 1 năm)</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="form-label-caps">Số tiền mục tiêu</label>
+                <input
+                  type="number"
+                  id="goal-target"
+                  placeholder="0"
+                  min="1000"
+                  step="1000"
+                  class="form-input font-semibold"
+                />
+              </div>
+              <div>
+                <label class="form-label-caps">Đóng góp/tháng</label>
+                <input
+                  type="number"
+                  id="goal-monthly"
+                  placeholder="0 (tuỳ chọn)"
+                  min="0"
+                  step="1000"
+                  class="form-input"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="form-label-caps">Ngày hết hạn (tuỳ chọn)</label>
+              <input type="date" id="goal-deadline" class="form-input" />
+            </div>
+          </div>
+          <div
+            class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl"
+          >
+            <button class="close-mini-btn btn btn-secondary">Hủy</button>
+            <button id="save-goal-btn" class="btn btn-primary">
+              Lưu mục tiêu
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup phân bổ số dư vào các mục tiêu tiết kiệm -->
+    <div id="allocate-modal" class="fixed inset-0 z-50 hidden">
+      <div
+        class="mini-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-300"
+      ></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          class="mini-card card bg-white w-full max-w-lg rounded-2xl shadow-xl transform scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[90vh]"
+        >
+          <div
+            class="flex justify-between items-center p-5 border-b border-gray-100 shrink-0"
+          >
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">
+                Phân bổ tiền vào tiết kiệm
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Tổng số dư khả dụng:
+                <span
+                  id="allocate-available-balance"
+                  class="font-bold text-emerald-600"
+                  >0 ₫</span
+                >
+              </p>
+            </div>
+            <button
+              class="close-mini-btn p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+            >
+              <i data-icon="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <div class="p-5 overflow-y-auto space-y-4 flex-1">
+            <div
+              class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-gray-100"
+            >
+              <div class="text-xs text-slate-600">
+                Đã phân bổ:
+                <span
+                  id="allocate-total-amount"
+                  class="font-semibold text-slate-900"
+                  >0 ₫</span
+                >
+                <span
+                  id="allocate-remaining-balance"
+                  class="text-slate-500 ml-1"
+                  >(Còn lại: 0 ₫)</span
+                >
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="allocate-split-even-btn"
+                  class="btn btn-secondary !py-1 !px-2.5 !text-xs"
+                >
+                  Chia đều
+                </button>
+                <button
+                  type="button"
+                  id="allocate-clear-btn"
+                  class="btn btn-ghost !py-1 !px-2 !text-xs text-slate-500"
+                >
+                  Xóa hết
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label-caps mb-2 block"
+                >Chọn mục tiêu & số tiền phân bổ</label
+              >
+              <div id="allocate-goals-container" class="space-y-3">
+                <!-- Danh sách mục tiêu tiết kiệm -->
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-slate-500 font-medium">Tháng:</span>
-            <input
-              type="month"
-              id="savings-month-filter"
-              class="form-input py-1.5 px-3 rounded-lg text-sm bg-white border border-gray-200 max-w-[160px]"
-            />
+
+          <div
+            class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl shrink-0"
+          >
+            <button class="close-mini-btn btn btn-ghost text-sm">Hủy</button>
+            <button id="allocate-confirm-btn" class="btn btn-primary text-sm">
+              Xác nhận phân bổ
+            </button>
           </div>
         </div>
       </div>
-
-      <div id="goal-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-
-    </main>
-  </div>
-
-  <div id="goal-modal" class="fixed inset-0 z-50 hidden">
-    <div
-      class="mini-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-300">
     </div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div
-        class="mini-card card bg-white w-full max-w-md rounded-2xl shadow-xl transform scale-95 opacity-0 transition-all duration-300">
-        <div class="flex justify-between items-center p-5 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-slate-900">Thêm mục tiêu tiết kiệm</h2>
-          <button
-            class="close-mini-btn p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
-            <i data-icon="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <div class="p-5 space-y-5">
-          <div>
-            <label class="form-label-caps">Tên mục tiêu</label>
-            <input type="text" id="goal-name" placeholder="VD: Mua Laptop mới" class="form-input" />
-          </div>
-          <div>
-            <label class="form-label-caps">Phân loại kỳ hạn</label>
-            <select id="goal-term-type" class="form-input">
-              <option value="SHORT_TERM">Ngắn hạn (< 1 năm)</option>
-              <option value="LONG_TERM">Dài hạn (>= 1 năm)</option>
-            </select>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="form-label-caps">Số tiền mục tiêu</label>
-              <input type="number" id="goal-target" placeholder="0" min="1000" step="1000"
-                class="form-input font-semibold" />
-            </div>
-            <div>
-              <label class="form-label-caps">Đóng góp/tháng</label>
-              <input type="number" id="goal-monthly" placeholder="0 (tuỳ chọn)" min="0" step="1000"
-                class="form-input" />
-            </div>
-          </div>
-          <div>
-            <label class="form-label-caps">Hạn chót (tuỳ chọn)</label>
-            <input type="date" id="goal-deadline" class="form-input" />
-          </div>
-        </div>
-        <div class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
-          <button class="close-mini-btn btn btn-secondary">Hủy</button>
-          <button id="save-goal-btn" class="btn btn-primary">Lưu mục tiêu</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Popup đóng góp tiền vào mục tiêu -->
-  <div id="deposit-modal" class="fixed inset-0 z-50 hidden">
-    <div
-      class="mini-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-300">
-    </div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div
-        class="mini-card card bg-white w-full max-w-sm rounded-2xl shadow-xl transform scale-95 opacity-0 transition-all duration-300">
-        <div class="flex justify-between items-center p-5 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-slate-900">Đóng góp vào "<span id="deposit-goal-name"></span>"</h2>
-          <button
-            class="close-mini-btn p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
-            <i data-icon="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <div class="p-5">
-          <label class="form-label-caps">Số tiền</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₫</span>
-            <input type="number" id="deposit-amount" placeholder="0" min="1000" step="1000"
-              class="form-input pl-8 text-lg font-semibold py-2.5" />
-          </div>
-        </div>
-        <div class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
-          <button class="close-mini-btn btn btn-secondary">Hủy</button>
-          <button id="save-deposit-btn" class="btn btn-primary">Đóng góp</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <div id="layout-modal"></div>
+    <div id="layout-chatbot"></div>
 
-  <div id="layout-modal"></div>
-  <div id="layout-chatbot"></div>
-
-  <script src="js/api.js"></script>
-  <script src="js/ai.js"></script>
-  <script src="js/icons.js"></script>
-  <script src="js/layout.js"></script>
-  <script src="js/main.js"></script>
-</body>
-
+    <script src="js/api.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/main.js"></script>
+  </body>
 </html>
