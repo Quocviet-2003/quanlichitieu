@@ -1977,6 +1977,7 @@ document.addEventListener("layoutLoaded", () => {
     const filterPanel = document.getElementById("budget-filter-panel");
     const categorySelect = document.getElementById("budget-filter-category");
     const clearBtn = document.getElementById("budget-filter-clear-btn");
+    const budgetMonth = document.getElementById("budget-month");
     //LỌC NS//
     const applyFilter = () => {
       // Lấy toàn bộ ngân sách đã tải làm danh sách ban đầu.
@@ -1999,7 +2000,7 @@ document.addEventListener("layoutLoaded", () => {
           try {
             await apiDeleteBudget(btn.dataset.id);
             showToast("Đã xóa ngân sách.");
-            renderBudgets();
+            renderBudgets(budgetMonth?.value ? { month: budgetMonth.value } : undefined);
             refreshNotifications();
           } catch (error) {
             showToast(error.message, "error");
@@ -2056,23 +2057,13 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
 
-    const budgetStartDate = document.getElementById("budget-start-date");
-    const budgetEndDate = document.getElementById("budget-end-date");
-    if (budgetStartDate && budgetEndDate) {
+    if (budgetMonth) {
       const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const fmt = (d) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      budgetStartDate.value = fmt(firstDay);
-      budgetEndDate.value = fmt(lastDay);
-
-      const handleBudgetDatesChange = () => {
-        renderBudgets({ from: budgetStartDate.value, to: budgetEndDate.value });
-      };
-      budgetStartDate.addEventListener("change", handleBudgetDatesChange);
-      budgetEndDate.addEventListener("change", handleBudgetDatesChange);
-      renderBudgets({ from: budgetStartDate.value, to: budgetEndDate.value });
+      budgetMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      budgetMonth.addEventListener("change", () => {
+        renderBudgets({ month: budgetMonth.value });
+      });
+      renderBudgets({ month: budgetMonth.value });
     } else {
       renderBudgets();
     }
@@ -2108,13 +2099,17 @@ document.addEventListener("layoutLoaded", () => {
         }
 
         try {
-          await apiCreateBudget({ category, limitAmount });
+          const payload = { category, limitAmount };
+          if (budgetMonth?.value) {
+            payload.month = budgetMonth.value;
+          }
+          await apiCreateBudget(payload);
 
           budgetModal?.close(); // Đóng popup sau khi tạo thành công//
           document.getElementById("budget-limit").value = ""; // Xóa hạn mức cũ trong ô nhập//
           showToast("Thêm ngân sách thành công!");
 
-          renderBudgets(); // Tải lại để ngân sách mới xuất hiện trên giao diện.
+          renderBudgets(budgetMonth?.value ? { month: budgetMonth.value } : undefined); // Tải lại để ngân sách mới xuất hiện trên giao diện.
 
           refreshNotifications(); // Tính và cập nhật lại cảnh báo trên chuông.
         } catch (error) {

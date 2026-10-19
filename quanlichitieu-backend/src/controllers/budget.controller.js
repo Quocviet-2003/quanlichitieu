@@ -13,13 +13,18 @@ const { asyncHandler, assert, requireFields, toNumber, monthRange, currentMonth,
 // GET /api/budgets
 exports.getBudgets = asyncHandler(async (req, res) => {
   let start, end, month;
-  if (req.query.from && req.query.to) {
+  if (req.query.month) {
+    month = req.query.month;
+    const range = monthRange(month);
+    start = range.start;
+    end = range.end;
+  } else if (req.query.from && req.query.to) {
     start = new Date(`${req.query.from}T00:00:00.000Z`);
     end = new Date(`${req.query.to}T00:00:00.000Z`);
     end.setUTCDate(end.getUTCDate() + 1);
-    month = req.query.month || `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+    month = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
   } else {
-    month = req.query.month || currentMonth();
+    month = currentMonth();
     const range = monthRange(month);
     start = range.start;
     end = range.end;
