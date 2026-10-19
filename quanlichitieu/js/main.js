@@ -594,35 +594,21 @@ document.addEventListener("layoutLoaded", () => {
     const categoryCanvas = document.getElementById("reportCategoryChart");
     if (!trendCanvas && !categoryCanvas) return;
 
-    const startDateInput = document.getElementById("report-start-date");
-    const endDateInput = document.getElementById("report-end-date");
-    if (
-      startDateInput &&
-      endDateInput &&
-      !startDateInput.value &&
-      !endDateInput.value
-    ) {
+    const reportMonth = document.getElementById("report-month");
+    if (reportMonth && !reportMonth.value) {
       const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const fmt = (d) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      startDateInput.value = fmt(firstDay);
-      endDateInput.value = fmt(now);
+      reportMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     }
     let barChartInstance = null;
     let doughnutChartInstance = null;
     let allTransactions = [];
 
     const renderReportsData = () => {
+      const selectedMonth = reportMonth?.value;
       let transactions = allTransactions;
-      if (startDateInput && startDateInput.value) {
+      if (selectedMonth) {
         transactions = transactions.filter(
-          (tx) => tx.date && tx.date.slice(0, 10) >= startDateInput.value,
-        );
-      }
-      if (endDateInput && endDateInput.value) {
-        transactions = transactions.filter(
-          (tx) => tx.date && tx.date.slice(0, 10) <= endDateInput.value,
+          (tx) => tx.date && tx.date.slice(0, 7) === selectedMonth,
         );
       }
 
@@ -645,23 +631,40 @@ document.addEventListener("layoutLoaded", () => {
         netEl.classList.toggle("text-rose-600", net < 0);
       }
 
+      // Biểu đồ cột: Hiển thị 6 tháng gần nhất tính đến tháng được chọn
       const monthlyTotals = {};
-      transactions.forEach((tx) => {
+      allTransactions.forEach((tx) => {
         const d = new Date(tx.date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         if (!monthlyTotals[key]) monthlyTotals[key] = { thu: 0, chi: 0 };
         if (tx.type === "THU") monthlyTotals[key].thu += tx.amount;
         else monthlyTotals[key].chi += tx.amount;
       });
-      const sortedMonths = Object.keys(monthlyTotals).sort().slice(-6);
-      const monthLabels = sortedMonths.map((key) => {
+
+      let targetMonths = [];
+      if (selectedMonth) {
+        const [year, month] = selectedMonth.split("-").map(Number);
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(year, month - 1 - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          targetMonths.push(key);
+        }
+      } else {
+        targetMonths = Object.keys(monthlyTotals).sort().slice(-6);
+      }
+
+      const monthLabels = targetMonths.map((key) => {
         const [year, month] = key.split("-");
         return `T${parseInt(month, 10)}/${year}`;
       });
 
+      const hasTrendData = targetMonths.some(
+        (k) => (monthlyTotals[k]?.thu || 0) > 0 || (monthlyTotals[k]?.chi || 0) > 0,
+      );
+
       if (trendCanvas && window.Chart) {
         if (barChartInstance) barChartInstance.destroy();
-        if (sortedMonths.length === 0) {
+        if (!hasTrendData) {
           trendCanvas.parentElement
             .querySelector(".report-empty-trend")
             ?.remove();
@@ -683,13 +686,13 @@ document.addEventListener("layoutLoaded", () => {
               datasets: [
                 {
                   label: "Thu nhập",
-                  data: sortedMonths.map((k) => monthlyTotals[k].thu),
+                  data: targetMonths.map((k) => monthlyTotals[k]?.thu || 0),
                   backgroundColor: "#10b981",
                   borderRadius: 4,
                 },
                 {
                   label: "Chi tiêu",
-                  data: sortedMonths.map((k) => monthlyTotals[k].chi),
+                  data: targetMonths.map((k) => monthlyTotals[k]?.chi || 0),
                   backgroundColor: "#f43f5e",
                   borderRadius: 4,
                 },
@@ -780,10 +783,8 @@ document.addEventListener("layoutLoaded", () => {
     try {
       allTransactions = await apiGetTransactions();
       renderReportsData();
-      if (startDateInput)
-        startDateInput.addEventListener("change", renderReportsData);
-      if (endDateInput)
-        endDateInput.addEventListener("change", renderReportsData);
+      if (reportMonth)
+        reportMonth.addEventListener("change", renderReportsData);
     } catch (error) {
       showToast(error.message, "error");
     }
@@ -813,12 +814,17 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
+        const reportMonth = document.getElementById("report-month");
+        const selectedMonth = reportMonth?.value;
         const [transactions, budgets, goals] = await Promise.all([
           apiGetTransactions().catch(() => []),
-          apiGetBudgets().catch(() => []),
+          apiGetBudgets(selectedMonth ? { month: selectedMonth } : undefined).catch(() => []),
           apiGetSavingsGoals().catch(() => []),
         ]);
-        const summary = buildFinanceSummaryText(transactions, budgets, goals);
+        const filteredTx = selectedMonth
+          ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
+          : transactions;
+        const summary = buildFinanceSummaryText(filteredTx, budgets, goals);
         const insight = await apiGetAiInsight(summary);
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
