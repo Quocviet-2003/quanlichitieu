@@ -28,11 +28,11 @@ exports.getSummary = asyncHandler(async (req, res) => {
     end = range.end;
   }
 
-  const [incomeAgg, expenseAgg, savingsAgg, periodIncomeAgg, periodExpenseAgg, txCount] =
+  const [incomeAgg, expenseAgg, savingsGoals, periodIncomeAgg, periodExpenseAgg, txCount] =
     await Promise.all([
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'THU' } }),
       prisma.transaction.aggregate({ _sum: { amount: true }, where: { userId: req.userId, type: 'CHI' } }),
-      prisma.savingsGoal.aggregate({ _sum: { currentAmount: true }, where: { userId: req.userId } }),
+      prisma.savingsGoal.findMany({ where: { userId: req.userId } }),
       prisma.transaction.aggregate({
         _sum: { amount: true },
         where: { userId: req.userId, type: 'THU', date: { gte: start, lt: end } },
@@ -50,11 +50,27 @@ exports.getSummary = asyncHandler(async (req, res) => {
   const periodExpense = periodExpenseAgg._sum.amount || 0;
   const monthSurplus = Math.max(0, periodIncome - periodExpense);
 
+  let periodSavingsGoals = savingsGoals;
+  if (queryMonth) {
+    periodSavingsGoals = savingsGoals.filter((g) => {
+      const created = new Date(g.createdAt);
+      if (created >= end) return false;
+      if (g.deadline) {
+        const dl = new Date(g.deadline);
+        if (dl < start) return false;
+      }
+      return true;
+    });
+  }
+  const periodSavings = periodSavingsGoals.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
+  const totalSavings = savingsGoals.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
+
   res.json({
     balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
-    totalSavings: savingsAgg._sum.currentAmount || 0,
+    totalSavings: queryMonth ? periodSavings : totalSavings,
+    periodSavings,
     periodIncome,
     periodExpense,
     monthSurplus,

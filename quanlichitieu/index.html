@@ -85,16 +85,27 @@
 
       <!-- ====== NỘI DUNG TRANG TỔNG QUAN (DASHBOARD) ====== -->
       <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-        <div class="mb-8">
-          <h2
-            id="dashboard-greeting"
-            class="text-2xl font-bold text-slate-900 mb-1"
-          >
-            Xin chào
-          </h2>
-          <p class="text-sm text-slate-500">
-            Đây là tình hình tài chính của bạn trong tháng này.
-          </p>
+        <!-- Lời chào và chọn tháng xem tổng quan -->
+        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2
+              id="dashboard-greeting"
+              class="text-2xl font-bold text-slate-900 mb-1"
+            >
+              Xin chào
+            </h2>
+            <p id="dashboard-subtitle" class="text-sm text-slate-500">
+              Đây là tình hình tài chính của bạn trong tháng này.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-500 font-medium">Xem theo tháng:</span>
+            <input
+              type="month"
+              id="overview-month"
+              class="form-input py-1.5 px-3 rounded-lg text-sm bg-white border border-gray-200 max-w-[160px]"
+            />
+          </div>
         </div>
 
         <div
@@ -106,7 +117,7 @@
               <i data-icon="wallet" class="w-5 h-5"></i>
             </div>
             <div>
-              <p class="text-xs text-emerald-800 font-medium">
+              <p id="surplus-banner-label" class="text-xs text-emerald-800 font-medium">
                 Số dư còn thừa tháng này
               </p>
               <h4
