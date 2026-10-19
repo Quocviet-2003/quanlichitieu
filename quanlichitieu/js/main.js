@@ -1785,11 +1785,10 @@ document.addEventListener("layoutLoaded", () => {
         thuData = rows.map((r) => r.thu);
         chiData = rows.map((r) => r.chi);
 
-        const isSingleDay = rows.length === 1;
         if (!window.Chart) return;
         if (lineChart) lineChart.destroy();
         lineChart = new Chart(lineCanvas, {
-          type: isSingleDay ? "bar" : "line",
+          type: "line",
           data: {
             labels,
             datasets: [
@@ -1797,25 +1796,19 @@ document.addEventListener("layoutLoaded", () => {
                 label: "Thu nhập",
                 data: thuData,
                 borderColor: "#10b981",
-                backgroundColor: isSingleDay
-                  ? "#10b981"
-                  : "rgba(16,185,129,.08)",
+                backgroundColor: "rgba(16,185,129,.08)",
                 tension: 0.4,
                 fill: true,
-                pointRadius: isSingleDay ? 6 : 2,
-                borderRadius: isSingleDay ? 6 : 0,
+                pointRadius: 2,
               },
               {
                 label: "Chi tiêu",
                 data: chiData,
                 borderColor: "#f43f5e",
-                backgroundColor: isSingleDay
-                  ? "#f43f5e"
-                  : "rgba(244,63,94,.08)",
+                backgroundColor: "rgba(244,63,94,.08)",
                 tension: 0.4,
                 fill: true,
-                pointRadius: isSingleDay ? 6 : 2,
-                borderRadius: isSingleDay ? 6 : 0,
+                pointRadius: 2,
               },
             ],
           },
