@@ -2228,6 +2228,22 @@ document.addEventListener("layoutLoaded", () => {
         }
       }
 
+      // Cập nhật số lượng tiêu chí lọc đang được chọn trong panel
+      const filterBadge = document.getElementById("savings-filter-badge");
+      if (filterBadge) {
+        let activeCount = 0;
+        if (termSelect && termSelect.value) activeCount++;
+        if (statusSelect && statusSelect.value) activeCount++;
+        if (deadlineStart && deadlineStart.value) activeCount++;
+        if (deadlineEnd && deadlineEnd.value) activeCount++;
+        if (activeCount > 0) {
+          filterBadge.textContent = activeCount;
+          filterBadge.classList.remove("hidden");
+        } else {
+          filterBadge.classList.add("hidden");
+        }
+      }
+
       listEl.innerHTML =
         items.map(renderGoalCard).join("") ||
         '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có mục tiêu tiết kiệm nào (hoặc không khớp với bộ lọc).</p>';
@@ -2266,6 +2282,47 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
     renderGoals();
+
+    const filterBtn = document.getElementById("savings-filter-btn");
+    const filterPanel = document.getElementById("savings-filter-panel");
+    const filterClearBtn = document.getElementById("savings-filter-clear-btn");
+    const filterCloseBtn = document.getElementById("savings-filter-close-btn");
+
+    if (filterBtn && filterPanel) {
+      filterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        filterPanel.classList.toggle("hidden");
+      });
+      if (filterCloseBtn) {
+        filterCloseBtn.addEventListener("click", () => {
+          filterPanel.classList.add("hidden");
+        });
+      }
+      document.addEventListener("click", (e) => {
+        if (
+          !filterPanel.classList.contains("hidden") &&
+          !filterPanel.contains(e.target) &&
+          e.target !== filterBtn &&
+          !filterBtn.contains(e.target)
+        ) {
+          filterPanel.classList.add("hidden");
+        }
+      });
+    }
+
+    if (filterClearBtn) {
+      filterClearBtn.addEventListener("click", () => {
+        const statusSelect = document.getElementById("savings-status-filter");
+        const termSelect = document.getElementById("savings-term-filter");
+        const deadlineStart = document.getElementById("savings-deadline-start");
+        const deadlineEnd = document.getElementById("savings-deadline-end");
+        if (termSelect) termSelect.value = "";
+        if (statusSelect) statusSelect.value = "";
+        if (deadlineStart) deadlineStart.value = "";
+        if (deadlineEnd) deadlineEnd.value = "";
+        applySavingsFilter();
+      });
+    }
 
     const statusSelect = document.getElementById("savings-status-filter");
     if (statusSelect) {
