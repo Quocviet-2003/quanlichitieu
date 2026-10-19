@@ -2249,36 +2249,34 @@ document.addEventListener("layoutLoaded", () => {
       }
 
       if (
-        deadlineStart &&
-        deadlineEnd &&
-        deadlineStart.value &&
-        deadlineEnd.value
+        deadlineStart?.value &&
+        deadlineEnd?.value &&
+        deadlineStart.value > deadlineEnd.value
       ) {
-        if (new Date(deadlineStart.value) > new Date(deadlineEnd.value)) {
-          showToast(
-            "Ngày bắt đầu hạn chót không được sau ngày kết thúc",
-            "error",
-          );
-          deadlineStart.value = deadlineEnd.value;
-        } else {
-          const start = new Date(`${deadlineStart.value}T00:00:00.000Z`);
-          const end = new Date(`${deadlineEnd.value}T23:59:59.999Z`);
-          items = items.filter((g) => {
-            if (!g.deadline) return false;
-            const d = new Date(g.deadline);
-            return d >= start && d <= end;
-          });
-        }
+        showToast("Ngày bắt đầu không được sau ngày kết thúc", "error");
+        deadlineStart.value = deadlineEnd.value;
       }
 
-      // Cập nhật số lượng tiêu chí lọc đang được chọn trong panel
+      if (deadlineStart?.value || deadlineEnd?.value) {
+        items = items.filter((g) => {
+          if (!g.deadline) return false;
+          const dlStr = new Date(g.deadline).toLocaleDateString("en-CA");
+          if (deadlineStart?.value && dlStr < deadlineStart.value) return false;
+          if (deadlineEnd?.value && dlStr > deadlineEnd.value) return false;
+          return true;
+        });
+      }
+
       const filterBadge = document.getElementById("savings-filter-badge");
       if (filterBadge) {
         let activeCount = 0;
         if (termSelect && termSelect.value) activeCount++;
         if (statusSelect && statusSelect.value) activeCount++;
-        if (deadlineStart && deadlineStart.value) activeCount++;
-        if (deadlineEnd && deadlineEnd.value) activeCount++;
+        if (
+          (deadlineStart && deadlineStart.value) ||
+          (deadlineEnd && deadlineEnd.value)
+        )
+          activeCount++;
         if (activeCount > 0) {
           filterBadge.textContent = activeCount;
           filterBadge.classList.remove("hidden");
@@ -2350,10 +2348,12 @@ document.addEventListener("layoutLoaded", () => {
         const termSelect = document.getElementById("savings-term-filter");
         const deadlineStart = document.getElementById("savings-deadline-start");
         const deadlineEnd = document.getElementById("savings-deadline-end");
+        const monthFilter = document.getElementById("savings-month-filter");
         if (termSelect) termSelect.value = "";
         if (statusSelect) statusSelect.value = "";
         if (deadlineStart) deadlineStart.value = "";
         if (deadlineEnd) deadlineEnd.value = "";
+        if (monthFilter) monthFilter.value = "";
         applySavingsFilter();
       });
     }
@@ -2376,9 +2376,19 @@ document.addEventListener("layoutLoaded", () => {
       deadlineStart.addEventListener("change", applySavingsFilter);
     if (deadlineEnd) deadlineEnd.addEventListener("change", applySavingsFilter);
 
+    const goalDeadlineInput = document.getElementById("goal-deadline");
+    if (goalDeadlineInput) {
+      goalDeadlineInput.min = new Date().toLocaleDateString("en-CA");
+    }
+
     document
       .getElementById("add-goal-btn")
-      ?.addEventListener("click", () => goalModal?.open());
+      ?.addEventListener("click", () => {
+        if (goalDeadlineInput) {
+          goalDeadlineInput.min = new Date().toLocaleDateString("en-CA");
+        }
+        goalModal?.open();
+      });
 
     document
       .getElementById("save-goal-btn")
@@ -2397,6 +2407,11 @@ document.addEventListener("layoutLoaded", () => {
         }
         if (!targetAmount || targetAmount <= 0) {
           showToast("Vui lòng nhập số tiền mục tiêu hợp lệ", "error");
+          return;
+        }
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        if (deadline && deadline < todayStr) {
+          showToast("Ngày hết hạn không được trước ngày tạo", "error");
           return;
         }
 
