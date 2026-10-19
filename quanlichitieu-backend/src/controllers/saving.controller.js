@@ -68,7 +68,10 @@ exports.createSavingsGoal = asyncHandler(async (req, res) => {
   let deadline = null;
   if (req.body.deadline) {
     deadline = new Date(req.body.deadline);
-    assert(!isNaN(deadline.getTime()), 400, "Hạn chót không hợp lệ.");
+    assert(!isNaN(deadline.getTime()), 400, "Ngày hết hạn không hợp lệ.");
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    assert(deadline >= today, 400, "Ngày hết hạn không được trước ngày tạo.");
   }
   const monthlyContribution = toNumber(req.body.monthlyContribution);
   const termType =
@@ -123,7 +126,14 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
       data.deadline = null;
     } else {
       const deadline = new Date(req.body.deadline);
-      assert(!isNaN(deadline.getTime()), 400, "Hạn chót không hợp lệ.");
+      assert(!isNaN(deadline.getTime()), 400, "Ngày hết hạn không hợp lệ.");
+      const createdDate = new Date(existing.createdAt);
+      createdDate.setHours(0, 0, 0, 0);
+      assert(
+        deadline >= createdDate,
+        400,
+        "Ngày hết hạn không được trước ngày tạo.",
+      );
       data.deadline = deadline;
     }
   }
