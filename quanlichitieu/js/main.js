@@ -2606,6 +2606,17 @@ document.addEventListener("layoutLoaded", () => {
     // Chuyển một object FixedExpense nhận từ API thành một thẻ HTML trên giao diện.
     const renderCard = (item) => {
       const style = getIconForCategory(item.category);
+      let badge = '';
+      if (item.status === 'DEDUCTED') {
+        badge = '<span class="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-200/50">Đã trừ</span>';
+      } else if (item.status === 'PENDING') {
+        badge = '<span class="text-xs font-medium px-2 py-1 bg-amber-50 text-amber-600 rounded-md border border-amber-200/50">Đến hạn hôm nay</span>';
+      } else if (item.status === 'MISSED') {
+        badge = '<span class="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-600 rounded-md border border-rose-200/50">Chưa trừ</span>';
+      } else {
+        badge = '<span class="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-md">Chưa đến hạn</span>';
+      }
+
       return `
         <div class="card card-hover p-5">
           <div class="flex justify-between items-start mb-4">
@@ -2618,6 +2629,7 @@ document.addEventListener("layoutLoaded", () => {
                 <p class="text-xs text-slate-500">${item.category}</p>
               </div>
             </div>
+            ${badge}
           </div>
           <div class="mb-2 flex justify-between items-end">
             <div class="text-sm font-semibold text-rose-600">${formatCurrency(item.amount)}</div>
@@ -2646,6 +2658,16 @@ document.addEventListener("layoutLoaded", () => {
     const filterPanel = document.getElementById("fixed-filter-panel");
     const categorySelect = document.getElementById("fixed-filter-category");
     const clearBtn = document.getElementById("fixed-filter-clear-btn");
+    const monthInput = document.getElementById("fixed-expense-month");
+
+    if (monthInput) {
+      const now = new Date();
+      monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      monthInput.addEventListener("change", () => {
+        loadData({ month: monthInput.value });
+      });
+    }
+
     // tính tổng tiền theo danh mục//
     const renderList = (items) => {
       let total = items.reduce((sum, i) => sum + i.amount, 0);
@@ -2654,7 +2676,7 @@ document.addEventListener("layoutLoaded", () => {
 
       listEl.innerHTML =
         items.map(renderCard).join("") ||
-        '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào.</p>';
+        '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào cho tháng này.</p>';
       renderIcons(listEl);
 
       listEl.querySelectorAll(".delete-fixed-btn").forEach((btn) => {
@@ -2720,9 +2742,10 @@ document.addEventListener("layoutLoaded", () => {
     }
 
     // Gọi GET /api/fixed-expenses, tính tổng dự kiến mỗi tháng và dựng danh sách thẻ.
-    const loadData = async () => {
+    const loadData = async (options) => {
       try {
-        allItems = await apiGetFixedExpenses();
+        const queryOpts = options || (monthInput?.value ? { month: monthInput.value } : undefined);
+        allItems = await apiGetFixedExpenses(queryOpts);
         fillCategoryOptions();
         applyFilter();
       } catch (error) {

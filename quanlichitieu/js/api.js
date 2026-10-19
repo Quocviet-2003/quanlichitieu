@@ -148,8 +148,14 @@ async function apiDeleteBudget(id) {
 // --- CHI CỐ ĐỊNH HÀNG THÁNG (fixed-expenses.html) ---
 
 // Mỗi phần tử có dạng: { id, category, description, amount, deductDay, lastDeducted }
-async function apiGetFixedExpenses() {
-  return apiFetch('/api/fixed-expenses');
+async function apiGetFixedExpenses(options = '') {
+  let query = '';
+  if (typeof options === 'string' && options) {
+    query = `?month=${encodeURIComponent(options)}`;
+  } else if (options && options.month) {
+    query = `?month=${encodeURIComponent(options.month)}`;
+  }
+  return apiFetch(`/api/fixed-expenses${query}`);
 }
 
 //POST//
