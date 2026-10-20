@@ -12,6 +12,7 @@
     "db:push": "npx prisma db push",
     "db:seed": "node scripts/seed.js",
     "test:api": "node scripts/api.test.js",
+    "test:full": "node scripts/full-system.test.js",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {

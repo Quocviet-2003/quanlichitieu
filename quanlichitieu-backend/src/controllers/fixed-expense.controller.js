@@ -112,15 +112,17 @@ exports.createFixedExpense = async (req, res, next) => {
     const { amount, category, description, deductDay } = req.body;
     // Dữ liệu từ form có thể là chuỗi nên cần đổi về số trước khi kiểm tra/lưu.
     const parsedAmount = parseFloat(amount);
-    const parsedDeductDay = parseInt(deductDay) || 1;
-
-    // Kiểm tra dữ liệu nhận từ frontend. 
-    // Danh mục, số tiền, ngày trừ tiền bắt buộc phải có.
     if (!category || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ message: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.' });
     }
-    if (parsedDeductDay < 1 || parsedDeductDay > 31) {
-      return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+
+    let parsedDeductDay = 1;
+    if (deductDay !== undefined && deductDay !== null && deductDay !== '') {
+      const rawDay = parseInt(deductDay, 10);
+      if (isNaN(rawDay) || rawDay < 1 || rawDay > 31) {
+        return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+      }
+      parsedDeductDay = rawDay;
     }
 
     // Gắn userId lấy từ token để lịch của mỗi người dùng được tách riêng.
