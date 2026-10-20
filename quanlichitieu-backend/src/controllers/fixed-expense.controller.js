@@ -39,13 +39,19 @@ exports.getFixedExpenses = async (req, res, next) => {
         new Date(expense.lastDeducted) >= start &&
         new Date(expense.lastDeducted) < end;
 
-      const matchedTx = transactions.some((tx) => {
-        const descMatch = expense.description && tx.description && tx.description.includes(expense.description);
-        const catAmountMatch = tx.category === expense.category && Math.abs(tx.amount - expense.amount) < 0.01;
-        return descMatch || catAmountMatch;
+      // Khoản chi cố định chỉ được coi là đã trừ khi có lastDeducted trong tháng
+      // hoặc có giao dịch tự động do hệ thống tạo ra sau ngày tạo khoản chi này
+      const matchedAutoTx = transactions.some((tx) => {
+        if (!tx.date || new Date(tx.date) < new Date(expense.createdAt)) return false;
+        const autoDesc = `Thanh toán chi cố định: ${expense.category}`;
+        const isAutoDeduct = tx.description && (
+          tx.description === autoDesc ||
+          (expense.description && tx.description === expense.description)
+        );
+        return isAutoDeduct && tx.category === expense.category && Math.abs(tx.amount - expense.amount) < 0.01;
       });
 
-      const isDeducted = Boolean(lastDeductedInMonth || matchedTx);
+      const isDeducted = Boolean(lastDeductedInMonth || matchedAutoTx);
 
       let status = 'UPCOMING';
       if (isDeducted) {
@@ -54,12 +60,24 @@ exports.getFixedExpenses = async (req, res, next) => {
         status = 'MISSED'; // Tháng quá khứ chưa trừ
       } else if (targetMonth === curMonthStr) {
         const todayDay = now.getDate();
-        if (todayDay > targetDay) {
-          status = 'MISSED'; // Quá hạn trong tháng nhưng chưa trừ
-        } else if (todayDay === targetDay) {
+        const createdDate = new Date(expense.createdAt);
+        const wasCreatedAfterTargetDayThisMonth =
+          createdDate.getFullYear() === now.getFullYear() &&
+          createdDate.getMonth() === now.getMonth() &&
+          createdDate.getDate() > targetDay;
+
+        if (todayDay === targetDay) {
           status = 'PENDING'; // Hôm nay đến hạn
+        } else if (todayDay > targetDay) {
+          // Nếu khoản chi vừa được tạo trong tháng này SAU ngày trừ tiền,
+          // thì không coi là "Chưa trừ" (quá hạn) mà là "Chưa đến hạn" (chờ kỳ tiếp theo)
+          if (wasCreatedAfterTargetDayThisMonth) {
+            status = 'UPCOMING'; // Chưa đến hạn (kỳ tới mới trừ)
+          } else {
+            status = 'MISSED'; // Quá hạn trong tháng nhưng chưa trừ
+          }
         } else {
-          status = 'UPCOMING'; // Chưa đến hạn
+          status = 'UPCOMING'; // Chưa đến hạn (ngày trừ tiền chưa tới)
         }
       } else {
         status = 'UPCOMING'; // Tháng tương lai
@@ -94,15 +112,17 @@ exports.createFixedExpense = async (req, res, next) => {
     const { amount, category, description, deductDay } = req.body;
     // Dữ liệu từ form có thể là chuỗi nên cần đổi về số trước khi kiểm tra/lưu.
     const parsedAmount = parseFloat(amount);
-    const parsedDeductDay = parseInt(deductDay) || 1;
-
-    // Kiểm tra dữ liệu nhận từ frontend. 
-    // Danh mục, số tiền, ngày trừ tiền bắt buộc phải có.
     if (!category || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ message: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.' });
     }
-    if (parsedDeductDay < 1 || parsedDeductDay > 31) {
-      return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+
+    let parsedDeductDay = 1;
+    if (deductDay !== undefined && deductDay !== null && deductDay !== '') {
+      const rawDay = parseInt(deductDay, 10);
+      if (isNaN(rawDay) || rawDay < 1 || rawDay > 31) {
+        return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+      }
+      parsedDeductDay = rawDay;
     }
 
     // Gắn userId lấy từ token để lịch của mỗi người dùng được tách riêng.
