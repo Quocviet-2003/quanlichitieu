@@ -35,9 +35,17 @@ async function callOllama(messages) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,  // Gửi API key để Ollama xác thực
+        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages, stream: false }), // Gửi model và messages đến https://ollama.com/api/chat
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        options: {
+          num_predict: 250,
+          temperature: 0.2,
+        },
+      }),
     });
 
     if (!response.ok) {

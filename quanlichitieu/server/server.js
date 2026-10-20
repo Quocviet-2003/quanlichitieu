@@ -80,7 +80,8 @@ function cleanAiResponse(text) {
     let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, '');
     if (/^[\s\-:|]+$/.test(line)) return '';
     return line.replace(/\s*\|\s*/g, ' - ').trim();
-  }).filter(Boolean);
+  }).filter(Boolean)
+    .filter((l) => !/^(chào|dưới đây là|hy vọng|chúc bạn|sau đây là)/i.test(l));
 
   return lines.join('\n');
 }
@@ -88,10 +89,10 @@ function cleanAiResponse(text) {
 function buildSystemMessage(summary) {
   return {
     role: 'system',
-    content: 'Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n' +
-      'Không dùng bảng biểu, không dùng ký tự |, không dùng ký tự **.\n' +
-      'Trình bày các ý bằng văn bản tự nhiên hoặc gạch đầu dòng -.\n' +
-      `Dưới đây là số liệu thu chi hiện tại của người dùng, dùng để trả lời khi cần:\n${summary}`
+    content: 'Bạn là chuyên gia tài chính cá nhân súc tích. Luôn trả lời siêu ngắn gọn bằng tiếng Việt.\n' +
+      'Không chào hỏi, không mở bài hay kết bài xã giao, không dùng bảng biểu, không dùng ký tự |, không dùng **.\n' +
+      'Trả lời trong đúng 3 gạch đầu dòng ngắn (-), mỗi gạch 1 câu.\n' +
+      `Dữ liệu tài chính người dùng:\n${summary}`
   };
 }
 
@@ -114,7 +115,7 @@ async function handleAiInsights(req, res) {
 
     const messages = [
       buildSystemMessage(body.summary),
-      { role: 'user', content: 'Hãy đưa ra 3-4 nhận xét ngắn gọn (mỗi ý 1 dòng, có gạch đầu dòng "-"), chỉ ra danh mục chi nhiều nhất và 1 gợi ý tiết kiệm cụ thể.' }
+      { role: 'user', content: 'Nhận xét tài chính nhanh trong đúng 3 gạch đầu dòng ngắn (-), mỗi ý 1 câu: tổng quan thu chi & số dư, danh mục chi nhiều nhất, và 1 gợi ý tiết kiệm ngắn nhất.' }
     ];
 
     const insight = await askOllama(messages);

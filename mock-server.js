@@ -308,13 +308,13 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/ai-insights' || pathname === '/api/ai/insight') {
     return sendJson(res, {
-      insight: '- Tình hình tài chính tháng này rất khả quan với số dư tích lũy 42.850.000₫.\n- Danh mục Ăn uống và Nhà ở chiếm tỷ trọng hợp lý trong tổng chi.\n- Ngân sách Mua sắm đã vượt mức 12%, cần kiểm soát việc mua đồ công nghệ trong 2 tuần tới.\n- Gợi ý: Trích thêm 2.000.000₫ vào Quỹ khẩn cấp để sớm đạt mục tiêu 40.000.000₫.'
+      insight: '- Thu 26.500.000₫, Chi 10.730.000₫, thặng dư 15.770.000₫ (tỷ lệ tiết kiệm 59.5%).\n- Danh mục Ăn uống chi nhiều nhất (4.200.000₫); Mua sắm đã vượt hạn mức 12%.\n- Gợi ý: Hạn chế chi tiêu mua sắm và chuyển 2.000.000₫ vào Quỹ khẩn cấp.'
     });
   }
 
   if (pathname === '/api/ai-chat' || pathname === '/api/ai/chat') {
     return sendJson(res, {
-      reply: 'Chào bạn! Trong tháng 10 này bạn đã thu nhập 26.500.000₫ và chi tiêu 10.730.000₫.\nTỷ lệ tiết kiệm đạt 59.5%, rất xuất sắc! Hiện danh mục Mua sắm đang vượt ngân sách 250.000₫, bạn chú ý điều chỉnh nhé.'
+      reply: '- Tháng này thu 26.500.000₫, chi 10.730.000₫, thặng dư 15.770.000₫.\n- Danh mục Mua sắm đang vượt ngân sách 250.000₫, bạn nên hạn chế mua thêm đồ dùng chưa cần thiết.'
     });
   }
 
