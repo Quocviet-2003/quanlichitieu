@@ -220,10 +220,12 @@ async function apiUpdateSavingsGoal(id, goalData) {
   });
 }
 
-async function apiDepositToGoal(id, amount) {
+async function apiDepositToGoal(id, amount, date = null) {
+  const body = { amount };
+  if (date) body.date = date;
   return apiFetch(`/api/savings/${id}/deposit`, {
     method: 'POST',
-    body: JSON.stringify({ amount })
+    body: JSON.stringify(body)
   });
 }
 
