@@ -14,7 +14,8 @@ function cleanAiResponse(text) {
     let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, '');
     if (/^[\s\-:|]+$/.test(line)) return '';
     return line.replace(/\s*\|\s*/g, ' - ').trim();
-  }).filter(Boolean);
+  }).filter(Boolean)
+    .filter((l) => !/^(chào|dưới đây là|hy vọng|chúc bạn|sau đây là)/i.test(l));
 
   return lines.join('\n');
 }
