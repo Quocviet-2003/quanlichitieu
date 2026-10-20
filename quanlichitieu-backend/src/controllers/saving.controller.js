@@ -223,6 +223,8 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
     });
   }
 
+  const txDate = req.body.date ? new Date(req.body.date) : new Date();
+
   await prisma.transaction.create({
     data: {
       userId: req.userId,
@@ -230,7 +232,7 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
       type: "CHI",
       category: "Khác",
       description: `Tiết kiệm: ${goal.name}`,
-      date: new Date(),
+      date: isNaN(txDate.getTime()) ? new Date() : txDate,
     },
   });
 

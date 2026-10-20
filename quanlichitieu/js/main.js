@@ -1492,10 +1492,15 @@ document.addEventListener("layoutLoaded", () => {
             }
           }
 
-          const surplus =
+          const rawSurplus =
             s.monthSurplus !== undefined
               ? s.monthSurplus
               : Math.max(0, (s.periodIncome || 0) - (s.periodExpense || 0));
+          const availableBalance = Math.max(
+            0,
+            s.balance !== undefined ? s.balance : rawSurplus,
+          );
+          const surplus = Math.min(rawSurplus, availableBalance);
           const surplusBanner = document.getElementById("surplus-banner");
           const surplusAmountEl = document.getElementById("surplus-amount");
           const surplusLabelEl = document.getElementById("surplus-banner-label");
@@ -1778,9 +1783,23 @@ document.addEventListener("layoutLoaded", () => {
         confirmSurplusBtn.innerText = "Đang chuyển...";
 
         try {
-          await Promise.all(
-            allocations.map((a) => apiDepositToGoal(a.goalId, a.amount)),
-          );
+          const mVal = overviewMonthInput ? overviewMonthInput.value : null;
+          let transferDate = null;
+          if (mVal) {
+            const [y, m] = mVal.split("-");
+            const now = new Date();
+            const currentM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            if (mVal === currentM) {
+              transferDate = now.toISOString();
+            } else {
+              const lastDay = new Date(parseInt(y, 10), parseInt(m, 10), 0, 12, 0, 0);
+              transferDate = lastDay.toISOString();
+            }
+          }
+
+          for (const a of allocations) {
+            await apiDepositToGoal(a.goalId, a.amount, transferDate);
+          }
           showToast("Đã phân bổ số dư vào các mục tiêu tiết kiệm thành công!");
           surplusModal?.close();
           loadStatsSummary();
@@ -2708,9 +2727,9 @@ document.addEventListener("layoutLoaded", () => {
         allocateConfirmBtn.innerText = "Đang chuyển...";
 
         try {
-          await Promise.all(
-            allocations.map((a) => apiDepositToGoal(a.goalId, a.amount)),
-          );
+          for (const a of allocations) {
+            await apiDepositToGoal(a.goalId, a.amount);
+          }
           showToast(
             "Đã phân bổ số dư vào các mục tiêu tiết kiệm thành công!",
           );
