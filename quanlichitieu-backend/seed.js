@@ -23,14 +23,14 @@ async function main() {
   const transactions = [];
   for (let i = 0; i < 50; i++) {
     const isThu = Math.random() > 0.7; // 30% thu, 70% chi
-    const amount = isThu 
-      ? Math.floor(Math.random() * 5000000) + 1000000 
+    const amount = isThu
+      ? Math.floor(Math.random() * 5000000) + 1000000
       : Math.floor(Math.random() * 500000) + 50000;
-    
+
     // Ngày ngẫu nhiên trong 6 tháng qua
     const date = new Date();
     date.setDate(date.getDate() - Math.floor(Math.random() * 180));
-    
+
     transactions.push({
       userId,
       amount,

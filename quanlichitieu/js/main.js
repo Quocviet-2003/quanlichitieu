@@ -462,12 +462,13 @@ document.addEventListener("layoutLoaded", () => {
       // LỌC DANH MỤC
       if (categorySelect && categorySelect.value)
         list = list.filter((tx) => tx.category === categorySelect.value);
-
+      // Lọc từ ngày
       if (startDateInput && startDateInput.value) {
         list = list.filter(
           (tx) => tx.date && tx.date.slice(0, 10) >= startDateInput.value,
         );
       }
+      // Lọc đến ngày
       if (endDateInput && endDateInput.value) {
         list = list.filter(
           (tx) => tx.date && tx.date.slice(0, 10) <= endDateInput.value,
@@ -504,13 +505,13 @@ document.addEventListener("layoutLoaded", () => {
         cats.map((c) => `<option value="${c}">${c}</option>`).join("");
       categorySelect.value = current;
     };
-
+    //xem DANH SACH GIAO DỊCH//
     const reloadTxData = () => {
       apiGetTransactions()
         .then((transactions) => {
           allTransactions = transactions;
-          fillCategoryOptions();
-          applyFilters();
+          fillCategoryOptions();// LẤY DANH MỤC, ĐƯA VÀO Ô CHỌN DANH MỤC
+          applyFilters();//ÁP DỤNG LỌC, HIỂN THỊ KẾT QUẢ
         })
         .catch((error) => showToast(error.message, "error"));
     };
@@ -1183,18 +1184,19 @@ document.addEventListener("layoutLoaded", () => {
     openModal(); // Mở bảng nhập và bắt đầu tải danh mục.
   };
   //2345. XỬ LÝ SỬA GIAO DỊCH
-  //MỞ POPUP & CHUYỂN THÔNG TIN VÀO FORM//
+  // Lấy thông tin cũ và đưa vào popup
   window.openEditTxModal = (txId) => {
-    const tx = window.loadedTransactionsMap?.[txId]; // TÌM GD//
+    //Tìm giao dịch và ghi nhớ đang sửa giao dịch nào
+    const tx = window.loadedTransactionsMap?.[txId];
     if (!tx) return;
     currentEditTxId = txId;
-
+    //Đổi tiêu đề popup
     const title = document.getElementById("tx-modal-title");
     if (title) title.innerText = "Sửa giao dịch";
 
     const txAmountInput = document.getElementById("tx-amount");
     const txCategoryInput = document.getElementById("tx-category");
-
+    // ĐIỀN so tien danh muc cu//
     if (txAmountInput) {
       txAmountInput.value = tx.amount
         ? new Intl.NumberFormat("en-US").format(tx.amount)
@@ -1215,18 +1217,18 @@ document.addEventListener("layoutLoaded", () => {
         "border-2",
       );
     }
-
+    // điền mô tả và ngày gd//
     document.getElementById("tx-desc").value = tx.description || "";
     document.getElementById("tx-date").value = new Date(tx.date)
       .toISOString()
       .split("T")[0];
-
+    //Chọn đúng loại Chi tiêu hoặc Thu nhập//
     if (tx.type === "CHI") {
       document.getElementById("tx-type-chi")?.click();
     } else {
       document.getElementById("tx-type-thu")?.click();
     }
-
+    // Đổi chữ trên nút lưu từ “Lưu giao dịch” thành “Cập nhật”
     if (saveBtn) saveBtn.innerText = "Cập nhật";
     openModal();
   };
@@ -2002,7 +2004,7 @@ document.addEventListener("layoutLoaded", () => {
     const categorySelect = document.getElementById("budget-filter-category");
     const clearBtn = document.getElementById("budget-filter-clear-btn");
     const budgetMonth = document.getElementById("budget-month");
-    //LỌC NS//
+    //LỌC NS danh mục//
     const applyFilter = () => {
       // Lấy toàn bộ ngân sách đã tải làm danh sách ban đầu.
       let items = allBudgets;
@@ -2080,10 +2082,11 @@ document.addEventListener("layoutLoaded", () => {
         showToast(error.message, "error");
       }
     };
-
+    //lọc tháng
     if (budgetMonth) {
       const now = new Date();
       budgetMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      //ddoorir tháng tải lại dl//
       budgetMonth.addEventListener("change", () => {
         renderBudgets({ month: budgetMonth.value });
       });
@@ -2121,7 +2124,7 @@ document.addEventListener("layoutLoaded", () => {
           showToast("Vui lòng nhập hạn mức hợp lệ", "error");
           return; // Không gửi dữ liệu không hợp lệ đến backend.
         }
-
+        //lấy tháng đang chọn trên trang rồi đưa vào dữ liệu gửi lên backend.
         try {
           const payload = { category, limitAmount };
           if (budgetMonth?.value) {
@@ -2781,6 +2784,7 @@ document.addEventListener("layoutLoaded", () => {
 
     const contentEl = document.getElementById("admin-content");
     const deniedEl = document.getElementById("admin-denied");
+    // đọc user đã lưu trong local, đủ vai trò bỏ hàm hidden hiện nd qtri//
     if (getCurrentUser()?.role !== "ADMIN") {
       deniedEl.classList.remove("hidden"); // ẩn toàn bộ nội dung quản trị
       return;

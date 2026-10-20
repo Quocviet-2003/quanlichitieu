@@ -11,6 +11,7 @@
     border-radius: 10px;
     box-shadow: 0 1px 0 rgba(80, 65, 40, 0.05);
 }
+
 .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 22px -10px rgba(80, 65, 40, 0.22);
@@ -27,10 +28,26 @@
     border-radius: 8px;
     border: 1px solid rgba(90, 75, 45, 0.18);
 }
-.stat-icon-blue    { background: #e9f2ec; color: #24593f; }
-.stat-icon-emerald { background: #ecf3ea; color: #24593f; }
-.stat-icon-rose    { background: #f9ebe6; color: #a34428; }
-.stat-icon-purple  { background: #efeaf6; color: #6d5a8e; }
+
+.stat-icon-blue {
+    background: #e9f2ec;
+    color: #24593f;
+}
+
+.stat-icon-emerald {
+    background: #ecf3ea;
+    color: #24593f;
+}
+
+.stat-icon-rose {
+    background: #f9ebe6;
+    color: #a34428;
+}
+
+.stat-icon-purple {
+    background: #efeaf6;
+    color: #6d5a8e;
+}
 
 .tx-icon {
     width: 2.25rem;
@@ -41,13 +58,41 @@
     border-radius: 8px;
     border: 1px solid rgba(90, 75, 45, 0.15);
 }
-.tx-icon-orange  { background: #f9ede1; color: #b06a2c; }
-.tx-icon-purple  { background: #efeaf6; color: #6d5a8e; }
-.tx-icon-blue    { background: #e9f2ec; color: #24593f; }
-.tx-icon-emerald { background: #ecf3ea; color: #2c6e54; }
-.tx-icon-rose    { background: #f9ebe6; color: #bc5539; }
-.tx-icon-yellow  { background: #faf1dc; color: #a57218; }
-.tx-icon-slate   { background: #f1ede2; color: #5f5847; }
+
+.tx-icon-orange {
+    background: #f9ede1;
+    color: #b06a2c;
+}
+
+.tx-icon-purple {
+    background: #efeaf6;
+    color: #6d5a8e;
+}
+
+.tx-icon-blue {
+    background: #e9f2ec;
+    color: #24593f;
+}
+
+.tx-icon-emerald {
+    background: #ecf3ea;
+    color: #2c6e54;
+}
+
+.tx-icon-rose {
+    background: #f9ebe6;
+    color: #bc5539;
+}
+
+.tx-icon-yellow {
+    background: #faf1dc;
+    color: #a57218;
+}
+
+.tx-icon-slate {
+    background: #f1ede2;
+    color: #5f5847;
+}
 
 /* ---------- Badge kiểu con dấu (nghiêng nhẹ, viền nét đứt) ---------- */
 .badge {
@@ -64,12 +109,27 @@
     background: rgba(255, 253, 247, 0.65);
     transform: rotate(-1.5deg);
 }
-.badge-up   { color: #24593f; }
-.badge-down { color: #a34428; }
+
+.badge-up {
+    color: #24593f;
+}
+
+.badge-down {
+    color: #a34428;
+}
 
 /* ---------- Số tiền: dùng số tabular để thẳng hàng như sổ sách ---------- */
-.amount-positive { color: #2f7050; font-weight: 600; font-variant-numeric: tabular-nums; }
-.amount-negative { color: #bc5539; font-weight: 600; font-variant-numeric: tabular-nums; }
+.amount-positive {
+    color: #2f7050;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.amount-negative {
+    color: #bc5539;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
 
 /* ---------- Nút bấm ---------- */
 .btn {
@@ -85,28 +145,40 @@
     cursor: pointer;
     transition: background-color .15s ease, border-color .15s ease, transform .05s ease;
 }
-.btn:active { transform: translateY(1px); }
+
+.btn:active {
+    transform: translateY(1px);
+}
 
 .btn-primary {
     background: #24593f;
     border-color: #1d4934;
     color: #fdfbf4;
 }
-.btn-primary:hover { background: #1d4934; }
+
+.btn-primary:hover {
+    background: #1d4934;
+}
 
 .btn-dark {
     background: #33302a;
     border-color: #22201b;
     color: #fdfbf4;
 }
-.btn-dark:hover { background: #22201b; }
+
+.btn-dark:hover {
+    background: #22201b;
+}
 
 .btn-secondary {
     background: transparent;
     border-color: #b9ad90;
     color: #4a4437;
 }
-.btn-secondary:hover { background: #f1ede2; }
+
+.btn-secondary:hover {
+    background: #f1ede2;
+}
 
 /* ---------- Biểu mẫu ---------- */
 .form-label {
@@ -116,6 +188,7 @@
     color: #33302a;
     margin-bottom: 0.35rem;
 }
+
 .form-label-caps {
     display: block;
     font-size: 0.68rem;
@@ -125,6 +198,7 @@
     color: #8a8271;
     margin-bottom: 0.35rem;
 }
+
 .form-input {
     width: 100%;
     padding: 0.6rem 0.9rem;
@@ -136,6 +210,7 @@
     outline: none;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
+
 .form-input:focus {
     border-color: #2f7050;
     box-shadow: 0 0 0 3px rgba(47, 112, 80, 0.14);
@@ -164,10 +239,12 @@
     border-left: 3px solid transparent;
     transition: background-color .15s ease, color .15s ease;
 }
+
 .nav-link:hover {
     background: #f1ede2;
     color: #33302a;
 }
+
 .nav-link-active {
     background: #e9f2ec;
     color: #1d4934;
@@ -188,7 +265,10 @@
     color: #7a715c;
     font-size: 0.625rem;
 }
-.bottom-nav-link:hover { color: #33302a; }
+
+.bottom-nav-link:hover {
+    color: #33302a;
+}
 
 /* ---------- Thanh tiến độ ---------- */
 .progress-track {
@@ -197,6 +277,7 @@
     border-radius: 999px;
     overflow: hidden;
 }
+
 .progress-bar {
     height: 100%;
     border-radius: 999px;

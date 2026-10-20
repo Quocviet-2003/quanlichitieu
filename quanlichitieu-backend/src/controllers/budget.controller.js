@@ -25,11 +25,12 @@ exports.getBudgets = asyncHandler(async (req, res) => {
     month = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
   } else {
     month = currentMonth();
+    //xác định tháng đầu và tháng jees tiếp
     const range = monthRange(month);
     start = range.start;
     end = range.end;
   }
-
+  // lấy đúng ngân sách tháng đưuọc chọn
   const budgets = await prisma.budget.findMany({
     where: { userId: req.userId, month },
     orderBy: { category: 'asc' },
