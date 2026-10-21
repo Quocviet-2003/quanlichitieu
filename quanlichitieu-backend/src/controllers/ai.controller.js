@@ -116,9 +116,6 @@ exports.getInsights = asyncHandler(async (req, res) => {
 });
 
 exports.chat = asyncHandler(async (req, res) => {
-  if (!req.body.message && req.body.question) {
-    req.body.message = req.body.question;
-  }
   requireFields(req.body, ["message"]);
   assert(
     String(req.body.message).trim() !== "",

@@ -6,7 +6,5 @@ const { verifyToken } = require('../middleware/auth.middleware');
 // Đăng nhập trước khi xử lý phân tích chi tiêu.
 router.post('/ai-insights', verifyToken, aiController.getInsights);
 router.post('/ai-chat', verifyToken, aiController.chat);
-router.post('/ai/insight', verifyToken, aiController.getInsights);
-router.post('/ai/chat', verifyToken, aiController.chat);
 
 module.exports = router;
