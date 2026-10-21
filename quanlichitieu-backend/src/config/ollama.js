@@ -1,6 +1,6 @@
 /**
- * Cấu hình kết nối tới Ollama Cloud cho tính năng AI.
- * API key CHỈ nằm trong file .env của server (không bao giờ lưu vào DB hay trả về client).
+ * Kết nối backend với Ollama Cloud.
+ * API key chỉ được đọc và dùng ở backend.
  */
 const prisma = require("./db");
 const { ApiError } = require("../utils/helpers");
@@ -9,7 +9,7 @@ const { getSetting } = require("../utils/settings");
 const OLLAMA_URL = "https://ollama.com/api/chat";
 const FALLBACK_MODEL = "gpt-oss:20b-cloud";
 
-// Model ưu tiên: setting do Admin đặt -> biến môi trường -> mặc định
+// Ưu tiên model Admin, rồi môi trường, rồi mặc định.
 async function resolveModel() {
   const fromDb = await getSetting("ollama_model");
   if (fromDb) return fromDb;
@@ -17,11 +17,11 @@ async function resolveModel() {
 }
 
 /**
- * Gọi Ollama Cloud với một mảng messages theo chuẩn OpenAI-style.
+ * Gửi messages tới Ollama và đọc phản hồi.
  * Trả về: { model, content, promptTokens, completionTokens }
  */
 async function callOllama(messages) {
-  // Lấy API key từ file .env của backend
+  // Key xác thực Ollama, khác JWT đăng nhập.
   const apiKey = process.env.OLLAMA_API_KEY;
   if (!apiKey) {
     throw new ApiError(
@@ -40,6 +40,7 @@ async function callOllama(messages) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
+      // Nhận toàn bộ câu trả lời một lần.
       body: JSON.stringify({
         model,
         messages,
@@ -66,11 +67,11 @@ async function callOllama(messages) {
       "Không thể kết nối tới dịch vụ AI. Vui lòng thử lại sau.",
     );
   }
-
   const promptTokens = data.prompt_eval_count || 0;
   const completionTokens = data.eval_count || 0;
   const content = (data.message?.content || "").trim();
 
+  // Trả nội dung và token để controller xử lý.
   return {
     model,
     content: content || "AI không trả về nội dung nào.",
@@ -79,7 +80,7 @@ async function callOllama(messages) {
   };
 }
 
-// Ước lượng chi phí (USD) theo giá tham khảo đầu ra/đầu vào phổ biến
+// Ước lượng chi phí USD theo số token.
 function estimateCost(promptTokens, completionTokens) {
   return Number(
     ((promptTokens * 0.15 + completionTokens * 0.6) / 1_000_000).toFixed(8),

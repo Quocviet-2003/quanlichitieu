@@ -12,18 +12,20 @@
 
 const API_BASE = ''; // Để trống = cùng origin với trang hiện tại
 
-// Lấy token đăng nhập đang lưu trong trình duyệt (localStorage)
+// Lấy token đăng nhập đã lưu.
 function getToken() {
   return localStorage.getItem('token');
 }
 
-// Bộ gọi fetch dùng chung: tự gắn token, tự đọc { error } khi có lỗi
+// [Dashboard] Gọi API kèm token, đọc JSON và xử lý lỗi.
 async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  // Gửi token để backend biết đang lấy dữ liệu của tài khoản nào.
   if (getToken()) headers['Authorization'] = `Bearer ${getToken()}`;
 
   let res;
   try {
+    // Chờ backend xử lý yêu cầu và trả phản hồi HTTP.
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   } catch (err) {
     throw new Error('Không kết nối được máy chủ. Hãy chắc chắn backend đang chạy (npm run dev).');
@@ -31,6 +33,7 @@ async function apiFetch(path, options = {}) {
 
   let data = null;
   try {
+    // Đọc nội dung JSON thành dữ liệu JavaScript cho main.js sử dụng.
     data = await res.json();
   } catch (err) {
     // Phản hồi không có body JSON
@@ -82,6 +85,7 @@ async function logout() {
 
 // --- GIAO DỊCH (THU NHẬP / CHI TIÊU) ---
 
+// [Dashboard] Bảng giao dịch gọi không bộ lọc: lấy tối đa 1.000 giao dịch mới nhất.
 async function apiGetTransactions(params = {}) {
   const sp = new URLSearchParams();
   if (params.from) sp.append('from', params.from);
@@ -113,6 +117,7 @@ async function apiDeleteTransaction(id) {
 }
 
 // --- NGÂN SÁCH (budget.html) ---
+// Lấy ngân sách theo tháng đang chọn.
 async function apiGetBudgets(options = '') {
   if (typeof options === 'string') {
     const query = options ? `?month=${encodeURIComponent(options)}` : '';
@@ -197,6 +202,7 @@ async function apiMarkAllNotificationsRead() {
 // --- MỤC TIÊU TIẾT KIỆM (savings.html) ---
 
 // Mỗi phần tử: { id, name, targetAmount, currentAmount, deadline, monthlyContribution, status, percentComplete }
+// Nút phân tích lấy mọi mục tiêu tiết kiệm.
 async function apiGetSavingsGoals(params = {}) {
   const sp = new URLSearchParams();
   if (params.termType) sp.append('termType', params.termType);
@@ -220,6 +226,7 @@ async function apiUpdateSavingsGoal(id, goalData) {
   });
 }
 
+// [Dashboard] Gửi số tiền phân bổ và ngày chuyển vào một mục tiêu tiết kiệm.
 async function apiDepositToGoal(id, amount, date = null) {
   const body = { amount };
   if (date) body.date = date;
@@ -237,9 +244,10 @@ async function apiGetCategories() {
   return apiFetch('/api/categories');
 }
 
-// Tổng quan dashboard: { balance, totalIncome, totalExpense, totalSavings, periodIncome, periodExpense, ... }
+// [Dashboard] Lấy số liệu cho các thẻ thu nhập, chi tiêu, tiết kiệm và banner số dư.
 async function apiGetStatsSummary(options = null) {
   let query = '';
+  // Chuỗi YYYY-MM lọc theo tháng; YYYY-MM-DD lọc theo ngày.
   if (typeof options === 'string') {
     if (options.length === 7) {
       query = `?month=${encodeURIComponent(options)}`;
@@ -258,7 +266,8 @@ async function apiGetMonthlyTrend(months = 6) {
   return apiFetch(`/api/stats/monthly?months=${months}`);
 }
 
-// Theo danh mục: [{ category, total, percentage }]
+// [Dashboard] Biểu đồ tròn lấy tổng tiền theo danh mục trong khoảng from/to.
+// Mỗi phần tử: { category, total, percentage }.
 async function apiGetCategoryBreakdown(type = 'CHI', from = null, to = null) {
   let url = `/api/stats/categories?type=${encodeURIComponent(type)}`;
   if (from) url += `&from=${encodeURIComponent(from)}`;
@@ -266,7 +275,8 @@ async function apiGetCategoryBreakdown(type = 'CHI', from = null, to = null) {
   return apiFetch(url);
 }
 
-// Chuỗi theo ngày để vẽ biểu đồ đường: [{ date: 'YYYY-MM-DD', thu, chi }]
+// [Dashboard] Biểu đồ đường lấy thu/chi từng ngày theo startDate/endDate.
+// Mỗi phần tử: { date: 'YYYY-MM-DD', thu, chi }.
 async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
   // Ưu tiên khoảng ngày khi đủ hai ngày; khi đó tham số days không được dùng.
   if (startDate && endDate) {

@@ -4,6 +4,7 @@
 // Nhờ vậy API key không bao giờ lộ ra trình duyệt.
 // Các request đều kèm Authorization (token lưu ở localStorage bởi api.js).
 
+// Dọn định dạng văn bản AI trước khi hiển thị.
 function cleanAiResponse(text) {
   if (!text || typeof text !== 'string') return '';
   let str = text.replace(/\|\s*\|/g, '\n');
@@ -23,6 +24,7 @@ if (typeof window !== 'undefined') {
   window.cleanAiResponse = cleanAiResponse;
 }
 
+// Gửi bản tóm tắt kèm token đến API phân tích.
 async function apiGetAiInsight(summary) {
   let res;
   try {
@@ -39,6 +41,7 @@ async function apiGetAiInsight(summary) {
     throw new Error('Không gọi được API. Hãy chạy app bằng lệnh "npm run dev" trong thư mục quanlichitieu-backend.');
   }
 
+  // Đọc kết quả JSON, báo lỗi nếu yêu cầu thất bại.
   let data;
   try {
     data = await res.json();

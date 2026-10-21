@@ -66,6 +66,8 @@ function currentMonth() {
 }
 
 // 'YYYY-MM' -> { start: Date(đầu tháng), end: Date(đầu tháng kế tiếp) }
+// [Dashboard] Hai mốc dùng UTC: gte start (>=) và lt end (<) để lấy trọn tháng.
+// Ví dụ 2026-10: từ 01/10 00:00 UTC đến trước 01/11 00:00 UTC.
 function monthRange(month) {
   assert(/^\d{4}-\d{2}$/.test(String(month || '')), 400, 'Tháng không hợp lệ (định dạng YYYY-MM).');
   const [y, m] = String(month).split('-').map(Number);

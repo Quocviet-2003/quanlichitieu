@@ -65,7 +65,7 @@ function parseCoords(body) {
   return { latitude: lat, longitude: lng };
 }
 
-// GET /api/transactions , LAY GD DUNG VS USER
+// [Dashboard] GET /api/transactions trả giao dịch của tài khoản đang đăng nhập.
 exports.getTransactions = asyncHandler(async (req, res) => {
   const where = { userId: req.userId };
 
@@ -91,14 +91,14 @@ exports.getTransactions = asyncHandler(async (req, res) => {
     where.date = dateFilterFromQuery(req.query);
   }
 
-  // Giới hạn số lượng để tránh quá tải (FE mặc định tải hết)
+  // Bảng giao dịch dashboard không gửi limit hay tháng, nên nhận tối đa 1.000 bản ghi.
   let take;
   if (req.query.limit) {
     take = Math.min(Math.max(parseInt(req.query.limit, 10) || 0, 1), 1000);
   } else {
     take = 1000;
   }
-  // LAY DL GIAO DICH//
+  // Lấy giao dịch mới nhất trước để frontend hiển thị trực tiếp.
   const transactions = await prisma.transaction.findMany({
     where,
     orderBy: [{ date: 'desc' }, { id: 'desc' }], // Mới nhất trước
@@ -108,7 +108,7 @@ exports.getTransactions = asyncHandler(async (req, res) => {
   res.json(transactions); // Trả mảng thuần đúng định dạng FE đang dùng
 });
 
-// // POST /api/transaction  Luu vao database
+// [Dashboard] Nút Lưu gửi POST: kiểm tra dữ liệu rồi tạo một giao dịch thu hoặc chi.
 exports.createTransaction = asyncHandler(async (req, res) => {
   const data = parseTxFields(req.body);
   const coords = parseCoords(req.body);
@@ -138,7 +138,7 @@ exports.getTransactionById = asyncHandler(async (req, res) => {
   res.json(tx);
 });
 
-// PUT /api/transactions/:id
+// Nút Sửa gửi PUT: chỉ cập nhật giao dịch thuộc tài khoản đang đăng nhập.
 exports.updateTransaction = asyncHandler(async (req, res) => {
   const id = req.params.id;
   const existing = isValidObjectId(id)
@@ -158,7 +158,7 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
   res.json(updated); // tra giao dich moi//
 });
 
-// DELETE /api/transactions/:id
+// Nút Xóa gửi DELETE: xóa giao dịch theo id và userId, không sửa mục tiêu tiết kiệm.
 exports.deleteTransaction = asyncHandler(async (req, res) => {
   const id = req.params.id;
   const deleted = isValidObjectId(id)

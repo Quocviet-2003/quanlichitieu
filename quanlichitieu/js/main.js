@@ -142,9 +142,9 @@ document.addEventListener("layoutLoaded", () => {
         .join("\n") || "- (không có khoản chi nào)";
 
     return (
-      `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
-      `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
-      `Chi tiêu theo danh mục:\n${categoryLines}`
+      Tổng thu nhập: \n +
+      Tổng chi tiêu: \n +
+      Chi tiêu theo danh mục:\n
     );
   };
 
@@ -723,12 +723,14 @@ document.addEventListener("layoutLoaded", () => {
     }
   };
 
+  // Luồng AI: lấy dữ liệu -> tạo summary -> gửi AI -> hiện kết quả.
   const initAiInsights = () => {
     const btn = document.getElementById("ai-insight-btn");
     const contentEl = document.getElementById("ai-insight-content");
     if (!btn || !contentEl) return;
 
     btn.addEventListener("click", async () => {
+      // 1. Khóa nút trong lúc phân tích.
       btn.disabled = true;
       const originalHtml = btn.innerHTML;
       btn.innerHTML = "Đang phân tích...";
@@ -736,14 +738,19 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
+        // 2. Đọc tháng và lấy dữ liệu.
         const reportMonth = document.getElementById("report-month");
         const selectedMonth = reportMonth?.value;
         const transactions = await apiGetTransactions().catch(() => []);
+        // 3. Lọc giao dịch theo tháng.
         const filteredTx = selectedMonth
           ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
           : transactions;
+        // 4. Ghép dữ liệu thành summary.
         const summary = buildFinanceSummaryText(filteredTx);
+        // 5. Gửi backend và chờ AI trả lời.
         const insight = await apiGetAiInsight(summary);
+        // 6. Hiển thị nhận xét.
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
           contentEl.innerHTML = marked.parse(cleanInsight);
@@ -753,7 +760,7 @@ document.addEventListener("layoutLoaded", () => {
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
       } finally {
-        // 13. Dù thành công hay thất bại cũng mở lại nút và ẩn loading
+        // 7. Mở lại nút khi xử lý xong.
         btn.disabled = false;
         btn.innerHTML = originalHtml;
         renderIcons(btn);
@@ -1352,25 +1359,28 @@ document.addEventListener("layoutLoaded", () => {
     return { open, close };
   };
 
+  // --- TRANG DASHBROAD ---
   const initDashboard = () => {
+    //có stat-income thì đi tiếp k thì dừng
     const incomeEl = document.getElementById("stat-income");
     if (!incomeEl) return;
 
     try {
+      //lấy token trong local để chào
       const savedUser = JSON.parse(localStorage.getItem("user"));
       const greetingEl = document.getElementById("dashboard-greeting");
       if (greetingEl && savedUser && savedUser.name) {
         greetingEl.textContent = `Xin chào, ${savedUser.name}`;
       }
     } catch (err) { }
-
+    // điền tháng mặc định vào ô chọn tháng
     let currentSurplusAmount = 0;
     const overviewMonthInput = document.getElementById("overview-month");
     if (overviewMonthInput && !overviewMonthInput.value) {
       const now = new Date();
       overviewMonthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     }
-
+    // loadStatsSummary() đọc tháng và yêu cầu lấy số liệu.
     const loadStatsSummary = () => {
       const mVal = overviewMonthInput ? overviewMonthInput.value : null;
       apiGetStatsSummary(mVal)
@@ -3087,7 +3097,7 @@ document.addEventListener("layoutLoaded", () => {
   initNotifications(); // Chuông thông báo ở header (vượt ngân sách, mục tiêu tiết kiệm...)
   initSearch(); // Tìm kiếm
   initReports(); // Thống kê & báo cáo
-  initAiInsights(); // Nút "Phân tích chi tiêu" trong trang Thống kê & báo cáo
+  initAiInsights(); // Nút "Phân tích chi tiêu".
   initAiChat(); // Chatbot AI nổi, hiện trên mọi trang
   initDashboard(); // Thẻ số liệu + biểu đồ trang chủ
   initBudgets(); // Trang ngân sách

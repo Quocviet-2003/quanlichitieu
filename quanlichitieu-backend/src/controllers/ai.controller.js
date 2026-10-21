@@ -1,11 +1,10 @@
 /**
- * Proxy AI (giữ nguyên "hợp đồng" mà Frontend đang gọi):
+ * Nhận số liệu frontend, gọi AI và trả nhận xét:
  * - POST /api/ai-insights  body: { summary }                    -> 200 { insight }
  * - POST /api/ai-chat      body: { message, history, summary }  -> 200 { reply }
  * Lỗi trả về JSON { error } kèm status tương ứng.
  *
- * Mọi request đều được ghi vào bảng AiLog để Admin thống kê,
- * và bị giới hạn bởi hạn mức câu hỏi AI mỗi ngày (AppSetting 'ai_daily_quota').
+ * Chỉ gọi AI thành công mới thử ghi thống kê AiLog.
  */
 const prisma = require("../config/db");
 const {
@@ -17,6 +16,7 @@ const {
 const { getSetting } = require("../utils/settings");
 const { callOllama, estimateCost } = require("../config/ollama");
 
+// Làm gọn văn bản AI trước khi trả frontend.
 function cleanAiResponse(text) {
   if (!text || typeof text !== "string") return "";
   let str = text.replace(/\|\s*\|/g, "\n");
@@ -36,6 +36,7 @@ function cleanAiResponse(text) {
   return lines.join("\n");
 }
 
+// Ghép quy tắc trả lời với số liệu frontend.
 function buildSystemPrompt(summary) {
   return (
     "Bạn là chuyên gia tài chính cá nhân súc tích. Luôn trả lời siêu ngắn gọn bằng tiếng Việt.\n" +
@@ -48,6 +49,7 @@ function buildSystemPrompt(summary) {
   );
 }
 
+// Giới hạn chung phân tích và chat mỗi ngày.
 async function checkQuota(userId) {
   const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
   if (!Number.isFinite(quota) || quota <= 0) return;
@@ -66,6 +68,7 @@ async function checkQuota(userId) {
   );
 }
 
+// Lưu thống kê sau khi gọi AI thành công.
 async function logUsage(userId, endpoint, result) {
   try {
     await prisma.aiLog.create({
@@ -86,9 +89,11 @@ async function logUsage(userId, endpoint, result) {
 }
 
 exports.getInsights = asyncHandler(async (req, res) => {
+  // Kiểm tra frontend đã gửi summary.
   requireFields(req.body, ["summary"]);
   await checkQuota(req.userId);
 
+  // system đặt quy tắc; user yêu cầu phân tích.
   const messages = [
     { role: "system", content: buildSystemPrompt(String(req.body.summary)) },
     {
@@ -101,9 +106,11 @@ exports.getInsights = asyncHandler(async (req, res) => {
         "Yêu cầu: Không mở đầu, không kết thúc, dưới 70 từ.",
     },
   ];
+  // Gửi yêu cầu và đợi kết quả Ollama.
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-insights", result);
 
+  // Trả insight để frontend hiển thị nhận xét.
   const cleanInsight = cleanAiResponse(result.content);
   res.json({ insight: cleanInsight || result.content });
 });
