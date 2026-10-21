@@ -115,37 +115,112 @@ document.addEventListener("layoutLoaded", () => {
     Khác: "#64748b",
   };
 
-  // Tóm tắt số liệu thu/chi thành đoạn text ngắn để gửi cho AI (dùng chung cho
-  // cả nút "Phân tích chi tiêu" và chatbot), không gửi nguyên dữ liệu giao dịch thô.
-  const buildFinanceSummaryText = (transactions) => {
-    if (!transactions || transactions.length === 0) {
-      return "Người dùng chưa có dữ liệu giao dịch.";
+  const buildFinanceSummaryText = (transactions = [], budgets = [], savings = [], fixedExpenses = []) => {
+    if ((!transactions || transactions.length === 0) && (!budgets || budgets.length === 0) && (!savings || savings.length === 0)) {
+      return "Người dùng chưa có dữ liệu giao dịch, ngân sách hoặc mục tiêu.";
     }
 
-    let totalIncome = 0;
-    let totalExpense = 0;
+    let overallIncome = 0;
+    let overallExpense = 0;
+    const monthlyData = {};
     const categoryTotals = {};
 
-    transactions.forEach((tx) => {
+    (transactions || []).forEach((tx) => {
+      const d = tx.date ? new Date(tx.date) : new Date();
+      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyData[mKey]) {
+        monthlyData[mKey] = { income: 0, expense: 0, categories: {} };
+      }
+
       if (tx.type === "THU") {
-        totalIncome += tx.amount;
+        overallIncome += tx.amount;
+        monthlyData[mKey].income += tx.amount;
       } else {
-        totalExpense += tx.amount;
+        overallExpense += tx.amount;
+        monthlyData[mKey].expense += tx.amount;
         const cat = tx.category || "Khác";
         categoryTotals[cat] = (categoryTotals[cat] || 0) + tx.amount;
+        monthlyData[mKey].categories[cat] = (monthlyData[mKey].categories[cat] || 0) + tx.amount;
       }
     });
 
-    const categoryLines =
-      Object.entries(categoryTotals)
-        .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
-        .join("\n") || "- (không có khoản chi nào)";
+    const netBalance = overallIncome - overallExpense;
+    const saveRate = overallIncome > 0 ? Math.round((netBalance / overallIncome) * 100) : 0;
 
-    return (
-      `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
-      `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
-      `Chi tiêu theo danh mục:\n${categoryLines}`
-    );
+    let text = `[TỔNG QUAN TÀI CHÍNH]\n`;
+    text += `- Tổng thu nhập: ${formatCurrency(overallIncome)}\n`;
+    text += `- Tổng chi tiêu: ${formatCurrency(overallExpense)}\n`;
+    text += `- Số dư ròng: ${netBalance >= 0 ? "+" : ""}${formatCurrency(netBalance)} (Tỷ lệ tiết kiệm: ${saveRate}%)\n`;
+
+    const sortedMonths = Object.keys(monthlyData).sort().reverse();
+    if (sortedMonths.length > 1) {
+      text += `\n[XU HƯỚNG THU CHI THEO THÁNG]\n`;
+      sortedMonths.slice(0, 4).forEach((m) => {
+        const item = monthlyData[m];
+        const diff = item.income - item.expense;
+        text += `- Tháng ${m}: Thu ${formatCurrency(item.income)}, Chi ${formatCurrency(item.expense)}, Dư ${diff >= 0 ? "+" : ""}${formatCurrency(diff)}\n`;
+      });
+    }
+
+    text += `\n[CƠ CẤU CHI TIÊU THEO DANH MỤC]\n`;
+    const sortedCats = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+    if (sortedCats.length === 0) {
+      text += `- Chưa có khoản chi tiêu nào.\n`;
+    } else {
+      sortedCats.forEach(([cat, amt]) => {
+        const pct = overallExpense > 0 ? Math.round((amt / overallExpense) * 100) : 0;
+        text += `- ${cat}: ${formatCurrency(amt)} (${pct}% tổng chi)\n`;
+      });
+    }
+
+    if (budgets && budgets.length > 0) {
+      text += `\n[THEO DÕI HẠN MỨC NGÂN SÁCH]\n`;
+      budgets.forEach((b) => {
+        const catName = b.category || b.name || "Khác";
+        const limit = b.limitAmount || b.amount || 0;
+        const spent = b.spent || 0;
+        const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+        const status = b.exceeded || spent > limit
+          ? "ĐÃ VƯỢT NGÂN SÁCH"
+          : (b.warning || pct >= 80 ? "CẢNH BÁO SẮP VƯỢT" : "AN TOÀN");
+        text += `- ${catName}: Đã chi ${formatCurrency(spent)}/${formatCurrency(limit)} (${pct}%) [${status}]\n`;
+      });
+    }
+
+    if (savings && savings.length > 0) {
+      text += `\n[MỤC TIÊU TIẾT KIỆM]\n`;
+      savings.forEach((s) => {
+        const target = s.targetAmount || 0;
+        const curr = s.currentAmount || 0;
+        const pct = target > 0 ? Math.round((curr / target) * 100) : 0;
+        const st = s.status === "COMPLETED" ? "Đã đạt mục tiêu" : "Đang tích lũy";
+        text += `- ${s.name}: Đã tích lũy ${formatCurrency(curr)}/${formatCurrency(target)} (${pct}%) [${st}]\n`;
+      });
+    }
+
+    if (fixedExpenses && fixedExpenses.length > 0) {
+      text += `\n[CHI PHÍ CỐ ĐỊNH HÀNG THÁNG]\n`;
+      let totalFixed = 0;
+      fixedExpenses.forEach((fe) => {
+        totalFixed += fe.amount || 0;
+        text += `- ${fe.description || fe.category}: ${formatCurrency(fe.amount || 0)} (ngày trừ: ${fe.deductDay || 1})\n`;
+      });
+      text += `- Tổng chi phí cố định: ${formatCurrency(totalFixed)}/tháng\n`;
+    }
+
+    const topExpenses = (transactions || [])
+      .filter((t) => t.type !== "THU")
+      .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+      .slice(0, 5);
+    if (topExpenses.length > 0) {
+      text += `\n[TOP 5 KHOẢN CHI LỚN NHẤT]\n`;
+      topExpenses.forEach((t) => {
+        const dateStr = t.date ? t.date.slice(0, 10) : "";
+        text += `- ${formatCurrency(t.amount)}: ${t.category} (${t.description || "Không ghi chú"}, ngày ${dateStr})\n`;
+      });
+    }
+
+    return text;
   };
 
   // Hiện thông báo nhỏ (toast) ở góc phải màn hình
@@ -738,19 +813,19 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
-        // 2. Đọc tháng và lấy dữ liệu.
         const reportMonth = document.getElementById("report-month");
         const selectedMonth = reportMonth?.value;
-        const transactions = await apiGetTransactions().catch(() => []);
-        // 3. Lọc giao dịch theo tháng.
+        const [transactions, budgets, savings, fixedExpenses] = await Promise.all([
+          apiGetTransactions().catch(() => []),
+          apiGetBudgets(selectedMonth ? { month: selectedMonth } : "").catch(() => []),
+          apiGetSavingsGoals().catch(() => []),
+          apiGetFixedExpenses().catch(() => []),
+        ]);
         const filteredTx = selectedMonth
           ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
           : transactions;
-        // 4. Ghép dữ liệu thành summary.
-        const summary = buildFinanceSummaryText(filteredTx);
-        // 5. Gửi backend và chờ AI trả lời.
+        const summary = buildFinanceSummaryText(filteredTx, budgets, savings, fixedExpenses);
         const insight = await apiGetAiInsight(summary);
-        // 6. Hiển thị nhận xét.
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
           contentEl.innerHTML = marked.parse(cleanInsight);
@@ -813,8 +888,13 @@ document.addEventListener("layoutLoaded", () => {
 
       sendBtn.disabled = true;
       try {
-        const transactions = await apiGetTransactions().catch(() => []);
-        const summary = buildFinanceSummaryText(transactions);
+        const [transactions, budgets, savings, fixedExpenses] = await Promise.all([
+          apiGetTransactions().catch(() => []),
+          apiGetBudgets().catch(() => []),
+          apiGetSavingsGoals().catch(() => []),
+          apiGetFixedExpenses().catch(() => []),
+        ]);
+        const summary = buildFinanceSummaryText(transactions, budgets, savings, fixedExpenses);
         const reply = await apiChatWithAi(question, chatHistory, summary);
         const cleanReply = typeof cleanAiResponse === "function" ? cleanAiResponse(reply) : reply;
 

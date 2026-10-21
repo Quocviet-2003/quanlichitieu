@@ -36,20 +36,19 @@ function cleanAiResponse(text) {
   return lines.join("\n");
 }
 
-// Ghép quy tắc trả lời với số liệu frontend.
 function buildSystemPrompt(summary) {
   return (
-    "Bạn là chuyên gia tài chính cá nhân súc tích. Luôn trả lời siêu ngắn gọn bằng tiếng Việt.\n" +
-    "Quy tắc bắt buộc:\n" +
-    "- Trả lời thẳng vào trọng tâm trong đúng 3 gạch đầu dòng ngắn (-).\n" +
-    "- Mỗi gạch đầu dòng chỉ 1 câu ngắn gọn, không giải thích dài dòng.\n" +
-    "- Tuyệt đối không có lời chào hỏi, không mở bài hay kết bài xã giao.\n" +
-    "- Không dùng bảng biểu, không dùng ký tự |, không dùng **.\n" +
-    `Dữ liệu tài chính người dùng:\n${summary || "(chưa có dữ liệu)"}`
+    "Bạn là cố vấn tài chính cá nhân thông minh. Dưới đây là toàn bộ dữ liệu tài chính của người dùng (thu chi, xu hướng các tháng, cơ cấu danh mục, ngân sách, mục tiêu tiết kiệm, chi phí cố định và top khoản chi lớn):\n" +
+    `${summary || "(chưa có dữ liệu)"}\n\n` +
+    "QUY TẮC PHẢN HỒI BẮT BUỘC:\n" +
+    "- Phân tích toàn diện dữ liệu trên nhưng KHI TRẢ LỜI PHẢI CỰC KỲ NGẮN GỌN, SÚC TÍCH.\n" +
+    "- Trả lời bằng đúng 3 đến 4 gạch đầu dòng ngắn (-).\n" +
+    "- Mỗi gạch đầu dòng là 1 câu ngắn gọn, đi thẳng vào trọng tâm, không giải thích dông dài.\n" +
+    "- Tuyệt đối không chào hỏi, không mở bài hay kết bài xã giao.\n" +
+    "- Không dùng bảng biểu, không dùng ký tự |, không dùng **."
   );
 }
 
-// Giới hạn chung phân tích và chat mỗi ngày.
 async function checkQuota(userId) {
   const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
   if (!Number.isFinite(quota) || quota <= 0) return;
@@ -68,7 +67,6 @@ async function checkQuota(userId) {
   );
 }
 
-// Lưu thống kê sau khi gọi AI thành công.
 async function logUsage(userId, endpoint, result) {
   try {
     await prisma.aiLog.create({
@@ -89,28 +87,25 @@ async function logUsage(userId, endpoint, result) {
 }
 
 exports.getInsights = asyncHandler(async (req, res) => {
-  // Kiểm tra frontend đã gửi summary.
   requireFields(req.body, ["summary"]);
   await checkQuota(req.userId);
 
-  // system đặt quy tắc; user yêu cầu phân tích.
   const messages = [
     { role: "system", content: buildSystemPrompt(String(req.body.summary)) },
     {
       role: "user",
       content:
-        "Nhận xét tài chính nhanh trong đúng 3 gạch đầu dòng ngắn (-), mỗi gạch 1 câu:\n" +
-        "- Tổng quan: Tổng thu, tổng chi và số dư (thặng dư hay thâm hụt).\n" +
-        "- Đáng chú ý: Khoản chi nhiều nhất hoặc danh mục vượt ngân sách.\n" +
-        "- Gợi ý tiết kiệm: 1 hành động thực tế, ngắn nhất để tối ưu chi phí.\n" +
-        "Yêu cầu: Không mở đầu, không kết thúc, dưới 70 từ.",
+        "Dựa vào dữ liệu tài chính chi tiết ở trên, hãy đưa ra nhận xét tài chính trong đúng 3 đến 4 gạch đầu dòng ngắn (-), mỗi gạch 1 câu:\n" +
+        "- Tổng quan: Tổng thu, tổng chi và tỷ lệ tiết kiệm (thặng dư hay thâm hụt).\n" +
+        "- Đáng chú ý: Khoản chi nhiều nhất, danh mục vượt hoặc sắp vượt ngân sách, chi phí cố định.\n" +
+        "- Tiến độ mục tiêu: Đánh giá nhanh tiến độ tích lũy (nếu có mục tiêu).\n" +
+        "- Hành động ngay: 1 lời khuyên thực tế, cụ thể nhất để tối ưu chi tiêu.\n" +
+        "Yêu cầu: Siêu ngắn gọn, không chào hỏi, dưới 80 từ.",
     },
   ];
-  // Gửi yêu cầu và đợi kết quả Ollama.
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-insights", result);
 
-  // Trả insight để frontend hiển thị nhận xét.
   const cleanInsight = cleanAiResponse(result.content);
   res.json({ insight: cleanInsight || result.content });
 });
@@ -139,7 +134,7 @@ exports.chat = asyncHandler(async (req, res) => {
       role: "system",
       content:
         buildSystemPrompt(String(req.body.summary || "")) +
-        "\nKhi trả lời câu hỏi: Trả lời đúng trọng tâm trong 1-2 câu hoặc tối đa 2-3 gạch đầu dòng ngắn, không dài dòng.",
+        "\nKhi trả lời câu hỏi: Dựa trên dữ liệu tài chính chi tiết đã cung cấp, nhưng trả lời trực diện, siêu ngắn gọn trong 1-2 câu hoặc tối đa 2-3 gạch đầu dòng ngắn, không dài dòng.",
     },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: String(req.body.message) },
