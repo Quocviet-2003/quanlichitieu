@@ -117,114 +117,35 @@ document.addEventListener("layoutLoaded", () => {
 
   // Tóm tắt số liệu thu/chi thành đoạn text ngắn để gửi cho AI (dùng chung cho
   // cả nút "Phân tích chi tiêu" và chatbot), không gửi nguyên dữ liệu giao dịch thô.
-  const buildFinanceSummaryText = (transactions, budgets = [], goals = []) => {
+  const buildFinanceSummaryText = (transactions) => {
     if (!transactions || transactions.length === 0) {
       return "Người dùng chưa có dữ liệu giao dịch.";
     }
 
-    let overallIncome = 0;
-    let overallExpense = 0;
-    const monthlyData = {};
+    let totalIncome = 0;
+    let totalExpense = 0;
+    const categoryTotals = {};
 
     transactions.forEach((tx) => {
-      const d = tx.date ? new Date(tx.date) : new Date();
-      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyData[mKey]) {
-        monthlyData[mKey] = {
-          income: 0,
-          expense: 0,
-          categories: {},
-        };
-      }
-
       if (tx.type === "THU") {
-        overallIncome += tx.amount;
-        monthlyData[mKey].income += tx.amount;
+        totalIncome += tx.amount;
       } else {
-        overallExpense += tx.amount;
-        monthlyData[mKey].expense += tx.amount;
+        totalExpense += tx.amount;
         const cat = tx.category || "Khác";
-        monthlyData[mKey].categories[cat] =
-          (monthlyData[mKey].categories[cat] || 0) + tx.amount;
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + tx.amount;
       }
     });
 
-    const sortedMonths = Object.keys(monthlyData).sort().reverse();
+    const categoryLines =
+      Object.entries(categoryTotals)
+        .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
+        .join("\n") || "- (không có khoản chi nào)";
 
-    let text = "### BẢNG 1: TỔNG HỢP THU CHI THEO TỪNG THÁNG\n";
-    text +=
-      "| Tháng | Tổng thu nhập | Tổng chi tiêu | Chênh lệch (Dư/Thiếu) | Tỷ lệ tiết kiệm |\n";
-    text += "| :--- | :--- | :--- | :--- | :--- |\n";
-    sortedMonths.forEach((m) => {
-      const mInfo = monthlyData[m];
-      const diff = mInfo.income - mInfo.expense;
-      const saveRate =
-        mInfo.income > 0 ? Math.round((diff / mInfo.income) * 100) : 0;
-      text += `| ${m} | ${formatCurrency(mInfo.income)} | ${formatCurrency(mInfo.expense)} | ${diff >= 0 ? "+" : ""}${formatCurrency(diff)} | ${saveRate}% |\n`;
-    });
-    text += `| TOÀN BỘ | ${formatCurrency(overallIncome)} | ${formatCurrency(overallExpense)} | ${formatCurrency(overallIncome - overallExpense)} | - |\n\n`;
-
-    text += "### BẢNG 2: CHI TIÊU THEO DANH MỤC QUA CÁC THÁNG\n";
-    text += "| Tháng | Danh mục | Số tiền chi | Tỷ trọng trong tháng |\n";
-    text += "| :--- | :--- | :--- | :--- |\n";
-    sortedMonths.forEach((m) => {
-      const mInfo = monthlyData[m];
-      const cats = Object.entries(mInfo.categories).sort((a, b) => b[1] - a[1]);
-      cats.forEach(([cat, amt]) => {
-        const pct =
-          mInfo.expense > 0 ? Math.round((amt / mInfo.expense) * 100) : 0;
-        text += `| ${m} | ${cat} | ${formatCurrency(amt)} | ${pct}% |\n`;
-      });
-    });
-    text += "\n";
-
-    if (budgets && budgets.length > 0) {
-      text += "### BẢNG 3: THEO DÕI HẠN MỨC NGÂN SÁCH\n";
-      text +=
-        "| Tháng | Danh mục | Hạn mức | Đã chi | Tỷ lệ dùng | Trạng thái |\n";
-      text += "| :--- | :--- | :--- | :--- | :--- | :--- |\n";
-      budgets.forEach((b) => {
-        const status = b.exceeded
-          ? "ĐÃ VƯỢT"
-          : b.warning
-            ? "CẢNH BÁO"
-            : "AN TOÀN";
-        text += `| ${b.month} | ${b.category} | ${formatCurrency(b.limitAmount)} | ${formatCurrency(b.spent)} | ${b.percentUsed}% | ${status} |\n`;
-      });
-      text += "\n";
-    }
-
-    if (goals && goals.length > 0) {
-      text += "### BẢNG 4: MỤC TIÊU TIẾT KIỆM\n";
-      text +=
-        "| Tên mục tiêu | Kỳ hạn | Số tiền cần | Đã tích lũy | Tiến độ | Trạng thái |\n";
-      text += "| :--- | :--- | :--- | :--- | :--- | :--- |\n";
-      goals.forEach((g) => {
-        const pct =
-          g.targetAmount > 0
-            ? Math.round((g.currentAmount / g.targetAmount) * 100)
-            : 0;
-        const term = g.termType === "LONG_TERM" ? "Dài hạn" : "Ngắn hạn";
-        const st = g.status === "COMPLETED" ? "Đã đạt" : "Đang tích lũy";
-        text += `| ${g.name} | ${term} | ${formatCurrency(g.targetAmount)} | ${formatCurrency(g.currentAmount)} | ${pct}% | ${st} |\n`;
-      });
-      text += "\n";
-    }
-
-    text += "### BẢNG 5: CHI TIẾT TỪNG GIAO DỊCH\n";
-    text += "| Ngày | Loại | Danh mục | Nội dung mô tả | Số tiền |\n";
-    text += "| :--- | :--- | :--- | :--- | :--- |\n";
-    const sortedTxs = [...transactions].sort(
-      (a, b) => new Date(b.date || 0) - new Date(a.date || 0),
+    return (
+      `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
+      `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
+      `Chi tiêu theo danh mục:\n${categoryLines}`
     );
-    sortedTxs.forEach((tx) => {
-      const d = tx.date ? tx.date.slice(0, 10) : "";
-      const typeStr = tx.type === "THU" ? "THU" : "CHI";
-      const desc = (tx.description || "-").replace(/\|/g, "/");
-      text += `| ${d} | ${typeStr} | ${tx.category} | ${desc} | ${formatCurrency(tx.amount)} |\n`;
-    });
-
-    return text;
   };
 
   // Hiện thông báo nhỏ (toast) ở góc phải màn hình
@@ -817,15 +738,11 @@ document.addEventListener("layoutLoaded", () => {
       try {
         const reportMonth = document.getElementById("report-month");
         const selectedMonth = reportMonth?.value;
-        const [transactions, budgets, goals] = await Promise.all([
-          apiGetTransactions().catch(() => []),
-          apiGetBudgets(selectedMonth ? { month: selectedMonth } : undefined).catch(() => []),
-          apiGetSavingsGoals().catch(() => []),
-        ]);
+        const transactions = await apiGetTransactions().catch(() => []);
         const filteredTx = selectedMonth
           ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
           : transactions;
-        const summary = buildFinanceSummaryText(filteredTx, budgets, goals);
+        const summary = buildFinanceSummaryText(filteredTx);
         const insight = await apiGetAiInsight(summary);
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
@@ -889,12 +806,8 @@ document.addEventListener("layoutLoaded", () => {
 
       sendBtn.disabled = true;
       try {
-        const [transactions, budgets, goals] = await Promise.all([
-          apiGetTransactions().catch(() => []),
-          apiGetBudgets().catch(() => []),
-          apiGetSavingsGoals().catch(() => []),
-        ]);
-        const summary = buildFinanceSummaryText(transactions, budgets, goals);
+        const transactions = await apiGetTransactions().catch(() => []);
+        const summary = buildFinanceSummaryText(transactions);
         const reply = await apiChatWithAi(question, chatHistory, summary);
         const cleanReply = typeof cleanAiResponse === "function" ? cleanAiResponse(reply) : reply;
 

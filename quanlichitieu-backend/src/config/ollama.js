@@ -42,7 +42,7 @@ async function callOllama(messages) {
         messages,
         stream: false,
         options: {
-          num_predict: 250,
+          num_predict: 1024,
           temperature: 0.2,
         },
       }),
@@ -57,14 +57,14 @@ async function callOllama(messages) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(502, 'Không thể kết nối tới dịch vụ AI. Vui lòng thử lại sau.');
   }
-  // Số token đầu vào
+
   const promptTokens = data.prompt_eval_count || 0;
-  const completionTokens = data.eval_count || 0; // Số token AI đã tạo
+  const completionTokens = data.eval_count || 0;
+  const content = (data.message?.content || '').trim();
 
   return {
     model,
-    // lấy nd câu trả lời
-    content: data.message?.content || 'AI không trả về nội dung nào.',
+    content: content || 'AI không trả về nội dung nào.',
     promptTokens,
     completionTokens,
   };

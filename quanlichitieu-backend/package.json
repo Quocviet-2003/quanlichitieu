@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "mongo": "node run-local-mongo.js",
     "db:push": "npx prisma db push",
     "db:seed": "node scripts/seed.js",
     "test:api": "node scripts/api.test.js",

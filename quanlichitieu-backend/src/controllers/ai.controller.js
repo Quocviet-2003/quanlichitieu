@@ -104,7 +104,8 @@ exports.getInsights = asyncHandler(async (req, res) => {
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-insights", result);
 
-  res.json({ insight: cleanAiResponse(result.content) });
+  const cleanInsight = cleanAiResponse(result.content);
+  res.json({ insight: cleanInsight || result.content });
 });
 
 exports.chat = asyncHandler(async (req, res) => {
@@ -138,5 +139,6 @@ exports.chat = asyncHandler(async (req, res) => {
   ];
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-chat", result);
-  res.json({ reply: cleanAiResponse(result.content) });
+  const cleanReply = cleanAiResponse(result.content);
+  res.json({ reply: cleanReply || result.content });
 });
