@@ -142,9 +142,9 @@ document.addEventListener("layoutLoaded", () => {
         .join("\n") || "- (không có khoản chi nào)";
 
     return (
-      Tổng thu nhập: \n +
-      Tổng chi tiêu: \n +
-      Chi tiêu theo danh mục:\n
+      `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
+      `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
+      `Chi tiêu theo danh mục:\n${categoryLines}`
     );
   };
 
