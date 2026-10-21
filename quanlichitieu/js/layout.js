@@ -111,8 +111,9 @@ async function loadLayout() {
     /* localStorage trống/hỏng thì giữ nguyên dữ liệu mẫu */
   }
 
-  // 5. Báo cho main.js (và icons.js) biết layout đã sẵn sàng để chạy tiếp
+  // [Dashboard] Chèn xong các components mới báo main.js gắn sự kiện và tải dữ liệu.
   document.dispatchEvent(new Event("layoutLoaded"));
 }
 
+// HTML sẵn sàng -> tải sidebar, header, modal -> phát sự kiện layoutLoaded.
 document.addEventListener("DOMContentLoaded", loadLayout);

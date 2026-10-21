@@ -115,13 +115,13 @@ document.addEventListener("layoutLoaded", () => {
     Khác: "#64748b",
   };
 
-  // Tóm tắt số liệu thu/chi thành đoạn text ngắn để gửi cho AI (dùng chung cho
-  // cả nút "Phân tích chi tiêu" và chatbot), không gửi nguyên dữ liệu giao dịch thô.
+  // Ghép số liệu và chi tiết giao dịch thành summary gửi AI.
   const buildFinanceSummaryText = (transactions, budgets = [], goals = []) => {
     if (!transactions || transactions.length === 0) {
       return "Người dùng chưa có dữ liệu giao dịch.";
     }
 
+    // Cộng thu, chi và nhóm chi tiêu theo tháng.
     let overallIncome = 0;
     let overallExpense = 0;
     const monthlyData = {};
@@ -151,12 +151,14 @@ document.addEventListener("layoutLoaded", () => {
 
     const sortedMonths = Object.keys(monthlyData).sort().reverse();
 
+    // Bảng 1: Tổng thu, chi và tiền còn lại theo tháng.
     let text = "### BẢNG 1: TỔNG HỢP THU CHI THEO TỪNG THÁNG\n";
     text +=
       "| Tháng | Tổng thu nhập | Tổng chi tiêu | Chênh lệch (Dư/Thiếu) | Tỷ lệ tiết kiệm |\n";
     text += "| :--- | :--- | :--- | :--- | :--- |\n";
     sortedMonths.forEach((m) => {
       const mInfo = monthlyData[m];
+      // Tỷ lệ còn lại = (thu - chi) / thu × 100%.
       const diff = mInfo.income - mInfo.expense;
       const saveRate =
         mInfo.income > 0 ? Math.round((diff / mInfo.income) * 100) : 0;
@@ -164,11 +166,13 @@ document.addEventListener("layoutLoaded", () => {
     });
     text += `| TOÀN BỘ | ${formatCurrency(overallIncome)} | ${formatCurrency(overallExpense)} | ${formatCurrency(overallIncome - overallExpense)} | - |\n\n`;
 
+    // Bảng 2: Tiền chi và tỷ trọng của từng danh mục.
     text += "### BẢNG 2: CHI TIÊU THEO DANH MỤC QUA CÁC THÁNG\n";
     text += "| Tháng | Danh mục | Số tiền chi | Tỷ trọng trong tháng |\n";
     text += "| :--- | :--- | :--- | :--- |\n";
     sortedMonths.forEach((m) => {
       const mInfo = monthlyData[m];
+      // Xếp danh mục chi nhiều nhất trước.
       const cats = Object.entries(mInfo.categories).sort((a, b) => b[1] - a[1]);
       cats.forEach(([cat, amt]) => {
         const pct =
@@ -178,6 +182,7 @@ document.addEventListener("layoutLoaded", () => {
     });
     text += "\n";
 
+    // Bảng 3: Ngân sách, số đã chi và cảnh báo vượt mức.
     if (budgets && budgets.length > 0) {
       text += "### BẢNG 3: THEO DÕI HẠN MỨC NGÂN SÁCH\n";
       text +=
@@ -194,12 +199,14 @@ document.addEventListener("layoutLoaded", () => {
       text += "\n";
     }
 
+    // Bảng 4: Số tiền và tiến độ các mục tiêu tiết kiệm.
     if (goals && goals.length > 0) {
       text += "### BẢNG 4: MỤC TIÊU TIẾT KIỆM\n";
       text +=
         "| Tên mục tiêu | Kỳ hạn | Số tiền cần | Đã tích lũy | Tiến độ | Trạng thái |\n";
       text += "| :--- | :--- | :--- | :--- | :--- | :--- |\n";
       goals.forEach((g) => {
+        // Tiến độ = đã tích lũy / mục tiêu × 100%.
         const pct =
           g.targetAmount > 0
             ? Math.round((g.currentAmount / g.targetAmount) * 100)
@@ -211,6 +218,7 @@ document.addEventListener("layoutLoaded", () => {
       text += "\n";
     }
 
+    // Bảng 5: Liệt kê từng giao dịch, mới nhất trước.
     text += "### BẢNG 5: CHI TIẾT TỪNG GIAO DỊCH\n";
     text += "| Ngày | Loại | Danh mục | Nội dung mô tả | Số tiền |\n";
     text += "| :--- | :--- | :--- | :--- | :--- |\n";
@@ -220,6 +228,7 @@ document.addEventListener("layoutLoaded", () => {
     sortedTxs.forEach((tx) => {
       const d = tx.date ? tx.date.slice(0, 10) : "";
       const typeStr = tx.type === "THU" ? "THU" : "CHI";
+      // Đổi dấu | trong mô tả để giữ đúng cột.
       const desc = (tx.description || "-").replace(/\|/g, "/");
       text += `| ${d} | ${typeStr} | ${tx.category} | ${desc} | ${formatCurrency(tx.amount)} |\n`;
     });
@@ -802,12 +811,14 @@ document.addEventListener("layoutLoaded", () => {
     }
   };
 
+  // Luồng AI: lấy dữ liệu -> tạo summary -> gửi AI -> hiện kết quả.
   const initAiInsights = () => {
     const btn = document.getElementById("ai-insight-btn");
     const contentEl = document.getElementById("ai-insight-content");
     if (!btn || !contentEl) return;
 
     btn.addEventListener("click", async () => {
+      // 1. Khóa nút trong lúc phân tích.
       btn.disabled = true;
       const originalHtml = btn.innerHTML;
       btn.innerHTML = "Đang phân tích...";
@@ -815,6 +826,7 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
+        // 2. Đọc tháng và lấy dữ liệu.
         const reportMonth = document.getElementById("report-month");
         const selectedMonth = reportMonth?.value;
         const [transactions, budgets, goals] = await Promise.all([
@@ -822,11 +834,15 @@ document.addEventListener("layoutLoaded", () => {
           apiGetBudgets(selectedMonth ? { month: selectedMonth } : undefined).catch(() => []),
           apiGetSavingsGoals().catch(() => []),
         ]);
+        // 3. Lọc giao dịch theo tháng.
         const filteredTx = selectedMonth
           ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
           : transactions;
+        // 4. Ghép dữ liệu thành summary.
         const summary = buildFinanceSummaryText(filteredTx, budgets, goals);
+        // 5. Gửi backend và chờ AI trả lời.
         const insight = await apiGetAiInsight(summary);
+        // 6. Hiển thị nhận xét.
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
           contentEl.innerHTML = marked.parse(cleanInsight);
@@ -836,7 +852,7 @@ document.addEventListener("layoutLoaded", () => {
       } catch (error) {
         contentEl.textContent = `Không thể phân tích: ${error.message}`;
       } finally {
-        // 13. Dù thành công hay thất bại cũng mở lại nút và ẩn loading
+        // 7. Mở lại nút khi xử lý xong.
         btn.disabled = false;
         btn.innerHTML = originalHtml;
         renderIcons(btn);
@@ -1439,25 +1455,28 @@ document.addEventListener("layoutLoaded", () => {
     return { open, close };
   };
 
+  // --- TRANG DASHBROAD ---
   const initDashboard = () => {
+    //có stat-income thì đi tiếp k thì dừng
     const incomeEl = document.getElementById("stat-income");
     if (!incomeEl) return;
 
     try {
+      //lấy token trong local để chào
       const savedUser = JSON.parse(localStorage.getItem("user"));
       const greetingEl = document.getElementById("dashboard-greeting");
       if (greetingEl && savedUser && savedUser.name) {
         greetingEl.textContent = `Xin chào, ${savedUser.name}`;
       }
     } catch (err) { }
-
+    // điền tháng mặc định vào ô chọn tháng
     let currentSurplusAmount = 0;
     const overviewMonthInput = document.getElementById("overview-month");
     if (overviewMonthInput && !overviewMonthInput.value) {
       const now = new Date();
       overviewMonthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     }
-
+    // loadStatsSummary() đọc tháng và yêu cầu lấy số liệu.
     const loadStatsSummary = () => {
       const mVal = overviewMonthInput ? overviewMonthInput.value : null;
       apiGetStatsSummary(mVal)
@@ -3174,7 +3193,7 @@ document.addEventListener("layoutLoaded", () => {
   initNotifications(); // Chuông thông báo ở header (vượt ngân sách, mục tiêu tiết kiệm...)
   initSearch(); // Tìm kiếm
   initReports(); // Thống kê & báo cáo
-  initAiInsights(); // Nút "Phân tích chi tiêu" trong trang Thống kê & báo cáo
+  initAiInsights(); // Nút "Phân tích chi tiêu".
   initAiChat(); // Chatbot AI nổi, hiện trên mọi trang
   initDashboard(); // Thẻ số liệu + biểu đồ trang chủ
   initBudgets(); // Trang ngân sách

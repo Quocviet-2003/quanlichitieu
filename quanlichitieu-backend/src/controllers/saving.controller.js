@@ -178,8 +178,9 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
   res.json(withPercent(updated));
 });
 
-// POST /api/savings/:id/deposit  body: { amount }
+// [Dashboard] POST /api/savings/:id/deposit nhận tiền phân bổ từ popup số dư.
 exports.depositToGoal = asyncHandler(async (req, res) => {
+  // Kiểm tra số tiền dương và mục tiêu thuộc tài khoản đang đăng nhập.
   requireFields(req.body, ["amount"]);
   const amount = toNumber(req.body.amount);
   assert(
@@ -198,6 +199,7 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
   const remainingNeeded = Math.max(0, existing.targetAmount - existing.currentAmount);
   assert(amount <= remainingNeeded, 400, "Số tiền đóng góp vượt quá số tiền còn thiếu của mục tiêu.");
 
+  // Kiểm tra số dư toàn bộ tài khoản: tổng thu trừ tổng chi.
   const [incAgg, expAgg] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
@@ -211,6 +213,7 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
   const currentBalance = (incAgg._sum.amount || 0) - (expAgg._sum.amount || 0);
   assert(amount <= currentBalance, 400, "Số dư tài khoản không đủ để đóng góp.");
 
+  // Cộng tiền vào mục tiêu; đủ số tiền yêu cầu thì đánh dấu hoàn thành.
   let goal = await prisma.savingsGoal.update({
     where: { id: existing.id },
     data: { currentAmount: { increment: amount } },
@@ -223,8 +226,10 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
     });
   }
 
+  // Dashboard gửi ngày thuộc tháng đang xem; thiếu ngày thì dùng hiện tại.
   const txDate = req.body.date ? new Date(req.body.date) : new Date();
 
+  // Ghi thêm giao dịch CHI, danh mục Khác, mô tả Tiết kiệm để trừ số dư khả dụng.
   await prisma.transaction.create({
     data: {
       userId: req.userId,

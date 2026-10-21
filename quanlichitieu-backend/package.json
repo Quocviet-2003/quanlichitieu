@@ -11,6 +11,8 @@
     "dev": "nodemon src/server.js",
     "db:push": "npx prisma db push",
     "db:seed": "node scripts/seed.js",
+    "db:clear": "node scripts/reset-db.js",
+    "db:reset": "node scripts/reset-db.js",
     "test:api": "node scripts/api.test.js",
     "test:full": "node scripts/full-system.test.js",
     "db:studio": "npx prisma studio"
