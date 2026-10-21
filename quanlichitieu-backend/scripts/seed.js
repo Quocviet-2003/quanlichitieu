@@ -163,11 +163,16 @@ async function main() {
   console.log('🎉 Seed hoàn tất!');
 }
 
-main()
-  .catch((err) => {
-    console.error('❌ Seed thất bại:', err);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .catch((err) => {
+      console.error('❌ Seed thất bại:', err);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
+module.exports = { seedDatabase: main };
+

@@ -334,17 +334,20 @@ async function apiChangePassword(oldPassword, newPassword) {
 }
 
 async function apiGetAiInsight(summaryText) {
-  const res = await apiFetch('/api/ai/insight', {
+  const res = await apiFetch('/api/ai-insights', {
     method: 'POST',
     body: JSON.stringify({ summary: summaryText })
   });
-  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
+  const insight = res && res.insight !== undefined ? res.insight : res;
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(insight) : insight;
 }
 
-async function apiChatWithAi(question, history, summaryText) {
-  const res = await apiFetch('/api/ai/chat', {
+async function apiChatWithAi(message, history, summaryText) {
+  const res = await apiFetch('/api/ai-chat', {
     method: 'POST',
-    body: JSON.stringify({ question, history, summary: summaryText })
+    body: JSON.stringify({ message, history, summary: summaryText })
   });
-  return typeof cleanAiResponse === 'function' ? cleanAiResponse(res) : res;
+  const reply = res && res.reply !== undefined ? res.reply : res;
+  return typeof cleanAiResponse === 'function' ? cleanAiResponse(reply) : reply;
 }
+
