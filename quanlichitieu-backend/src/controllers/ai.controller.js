@@ -20,7 +20,7 @@ const { callOllama, estimateCost } = require("../config/ollama");
 // Giữ nguyên giọng điệu như server cũ của FE
 function buildSystemPrompt(summary) {
   return (
-    "Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n" +
+    "Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn, đi thẳng vào trọng tâm bằng tiếng Việt.\n" +
     `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || "(chưa có dữ liệu)"}`
   );
 }
@@ -73,7 +73,7 @@ exports.getInsights = asyncHandler(async (req, res) => {
     {
       role: "user",
       content:
-        "Hãy đưa ra nhận xét và một vài lời khuyên tài chính ngắn gọn từ số liệu trên.",
+        "Hãy đưa ra nhận xét ngắn gọn, đi thẳng vào trọng tâm và một vài lời khuyên tài chính từ số liệu thu, chi, số dư trên.",
     },
   ];
 
@@ -108,7 +108,9 @@ exports.chat = asyncHandler(async (req, res) => {
   const messages = [
     {
       role: "system",
-      content: buildSystemPrompt(String(req.body.summary || "")),
+      content:
+        buildSystemPrompt(String(req.body.summary || "")) +
+        "\nKhi trả lời: Hãy trả lời ngắn gọn, đi thẳng vào trọng tâm câu hỏi, không dài dòng.",
     },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: String(req.body.message) },
