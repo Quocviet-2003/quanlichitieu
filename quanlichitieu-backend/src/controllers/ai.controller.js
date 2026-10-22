@@ -21,6 +21,7 @@ const { callOllama, estimateCost } = require("../config/ollama");
 function buildSystemPrompt(summary) {
   return (
     "Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn, đi thẳng vào trọng tâm bằng tiếng Việt.\n" +
+    "Quy tắc số tiền: Luôn viết đầy đủ các chữ số có dấu chấm phân cách hàng nghìn (ví dụ: 100.000đ, 1.500.000đ), tuyệt đối không viết tắt bằng k hay m.\n" +
     `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || "(chưa có dữ liệu)"}`
   );
 }
@@ -73,7 +74,7 @@ exports.getInsights = asyncHandler(async (req, res) => {
     {
       role: "user",
       content:
-        "Hãy đưa ra nhận xét ngắn gọn, đi thẳng vào trọng tâm và một vài lời khuyên tài chính từ số liệu thu, chi, số dư trên.",
+        "Hãy đưa ra nhận xét ngắn gọn, đi thẳng vào trọng tâm và một vài lời khuyên tài chính từ số liệu thu, chi, số dư trên. Viết số tiền rõ ràng đầy đủ (dạng 000.000đ), không viết tắt k hay m.",
     },
   ];
 
@@ -110,7 +111,7 @@ exports.chat = asyncHandler(async (req, res) => {
       role: "system",
       content:
         buildSystemPrompt(String(req.body.summary || "")) +
-        "\nKhi trả lời: Hãy trả lời ngắn gọn, đi thẳng vào trọng tâm câu hỏi, không dài dòng.",
+        "\nKhi trả lời: Hãy trả lời ngắn gọn, đi thẳng vào trọng tâm câu hỏi, không dài dòng. Luôn viết số tiền rõ ràng đầy đủ (dạng 000.000đ), không dùng k hay m.",
     },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: String(req.body.message) },
