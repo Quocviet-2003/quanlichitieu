@@ -1,10 +1,11 @@
 /**
- * Nhận số liệu frontend, gọi AI và trả nhận xét:
+ * Proxy AI (giữ nguyên "hợp đồng" mà Frontend đang gọi):
  * - POST /api/ai-insights  body: { summary }                    -> 200 { insight }
  * - POST /api/ai-chat      body: { message, history, summary }  -> 200 { reply }
  * Lỗi trả về JSON { error } kèm status tương ứng.
  *
- * Chỉ gọi AI thành công mới thử ghi thống kê AiLog.
+ * Mọi request đều được ghi vào bảng AiLog để Admin thống kê,
+ * và bị giới hạn bởi hạn mức câu hỏi AI mỗi ngày (AppSetting 'ai_daily_quota').
  */
 const prisma = require("../config/db");
 const {
@@ -16,42 +17,17 @@ const {
 const { getSetting } = require("../utils/settings");
 const { callOllama, estimateCost } = require("../config/ollama");
 
-// Làm gọn văn bản AI trước khi trả frontend.
-function cleanAiResponse(text) {
-  if (!text || typeof text !== "string") return "";
-  let str = text.replace(/\|\s*\|/g, "\n");
-  str = str.replace(/([^\n])\s+(\d+\.\s+)/g, "$1\n$2");
-  str = str.replace(/\*\*/g, "");
-
-  const lines = str
-    .split("\n")
-    .map((l) => {
-      let line = l.trim().replace(/^[\s|]+|[\s|]+$/g, "");
-      if (/^[\s\-:|]+$/.test(line)) return "";
-      return line.replace(/\s*\|\s*/g, " - ").trim();
-    })
-    .filter(Boolean)
-    .filter((l) => !/^(chào|dưới đây là|hy vọng|chúc bạn|sau đây là)/i.test(l));
-
-  return lines.join("\n");
-}
-
+// Giữ nguyên giọng điệu như server cũ của FE
 function buildSystemPrompt(summary) {
   return (
-    "Bạn là cố vấn tài chính cá nhân thông minh. Dưới đây là toàn bộ dữ liệu tài chính của người dùng (thu chi, xu hướng các tháng, cơ cấu danh mục, ngân sách, mục tiêu tiết kiệm, chi phí cố định và top khoản chi lớn):\n" +
-    `${summary || "(chưa có dữ liệu)"}\n\n` +
-    "QUY TẮC PHẢN HỒI BẮT BUỘC:\n" +
-    "- Phân tích toàn diện dữ liệu trên nhưng KHI TRẢ LỜI PHẢI CỰC KỲ NGẮN GỌN, SÚC TÍCH.\n" +
-    "- Trả lời bằng đúng 3 đến 4 gạch đầu dòng ngắn (-).\n" +
-    "- Mỗi gạch đầu dòng là 1 câu ngắn gọn, đi thẳng vào trọng tâm, không giải thích dông dài.\n" +
-    "- Tuyệt đối không chào hỏi, không mở bài hay kết bài xã giao.\n" +
-    "- Không dùng bảng biểu, không dùng ký tự |, không dùng **."
+    "Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn bằng tiếng Việt.\n" +
+    `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || "(chưa có dữ liệu)"}`
   );
 }
 
 async function checkQuota(userId) {
   const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
-  if (!Number.isFinite(quota) || quota <= 0) return;
+  if (!Number.isFinite(quota) || quota <= 0) return; // quota <= 0 coi như không giới hạn
 
   const used = await prisma.aiLog.count({
     where: {
@@ -82,10 +58,12 @@ async function logUsage(userId, endpoint, result) {
       },
     });
   } catch (err) {
+    // Ghi log thất bại không làm hỏng kết quả đã tạo
     console.error("[AI LOG]", err.message);
   }
 }
 
+// POST /api/ai-insights
 exports.getInsights = asyncHandler(async (req, res) => {
   requireFields(req.body, ["summary"]);
   await checkQuota(req.userId);
@@ -95,21 +73,17 @@ exports.getInsights = asyncHandler(async (req, res) => {
     {
       role: "user",
       content:
-        "Dựa vào dữ liệu tài chính chi tiết ở trên, hãy đưa ra nhận xét tài chính trong đúng 3 đến 4 gạch đầu dòng ngắn (-), mỗi gạch 1 câu:\n" +
-        "- Tổng quan: Tổng thu, tổng chi và tỷ lệ tiết kiệm (thặng dư hay thâm hụt).\n" +
-        "- Đáng chú ý: Khoản chi nhiều nhất, danh mục vượt hoặc sắp vượt ngân sách, chi phí cố định.\n" +
-        "- Tiến độ mục tiêu: Đánh giá nhanh tiến độ tích lũy (nếu có mục tiêu).\n" +
-        "- Hành động ngay: 1 lời khuyên thực tế, cụ thể nhất để tối ưu chi tiêu.\n" +
-        "Yêu cầu: Siêu ngắn gọn, không chào hỏi, dưới 80 từ.",
+        "Hãy đưa ra nhận xét và một vài lời khuyên tài chính ngắn gọn từ số liệu trên.",
     },
   ];
+
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-insights", result);
 
-  const cleanInsight = cleanAiResponse(result.content);
-  res.json({ insight: cleanInsight || result.content });
+  res.json({ insight: result.content });
 });
 
+// POST /api/ai-chat
 exports.chat = asyncHandler(async (req, res) => {
   requireFields(req.body, ["message"]);
   assert(
@@ -119,6 +93,7 @@ exports.chat = asyncHandler(async (req, res) => {
   );
   await checkQuota(req.userId);
 
+  // Chỉ giữ tối đa 10 lượt hội thoại gần nhất, đúng như server cũ của FE
   const history = Array.isArray(req.body.history)
     ? req.body.history
         .filter(
@@ -129,18 +104,18 @@ exports.chat = asyncHandler(async (req, res) => {
         )
         .slice(-10)
     : [];
+
   const messages = [
     {
       role: "system",
-      content:
-        buildSystemPrompt(String(req.body.summary || "")) +
-        "\nKhi trả lời câu hỏi: Dựa trên dữ liệu tài chính chi tiết đã cung cấp, nhưng trả lời trực diện, siêu ngắn gọn trong 1-2 câu hoặc tối đa 2-3 gạch đầu dòng ngắn, không dài dòng.",
+      content: buildSystemPrompt(String(req.body.summary || "")),
     },
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: String(req.body.message) },
   ];
+
   const result = await callOllama(messages);
   await logUsage(req.userId, "ai-chat", result);
-  const cleanReply = cleanAiResponse(result.content);
-  res.json({ reply: cleanReply || result.content });
+
+  res.json({ reply: result.content });
 });
