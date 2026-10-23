@@ -313,8 +313,71 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/ai-chat' || pathname === '/api/ai/chat') {
+    const body = await readJsonBody(req);
+    const message = (body.message || '').trim();
+    const lower = message.toLowerCase();
+
+    // Thống kê giao dịch theo tháng từ danh sách TRANSACTIONS
+    const monthlyMap = {};
+    for (const tx of TRANSACTIONS) {
+      const m = tx.date ? tx.date.slice(0, 7) : '2026-10';
+      if (!monthlyMap[m]) monthlyMap[m] = { thu: 0, chi: 0, count: 0 };
+      monthlyMap[m].count += 1;
+      if (tx.type === 'THU') monthlyMap[m].thu += tx.amount;
+      else monthlyMap[m].chi += tx.amount;
+    }
+
+    const fmt = (n) => n.toLocaleString('vi-VN') + 'đ';
+
+    // 1. Kiểm tra nếu hỏi về tháng cụ thể (ví dụ: tháng 8, tháng 9, tháng 10...)
+    let queryMonth = null;
+    if (/tháng\s*(10|mười)/i.test(lower)) queryMonth = '2026-10';
+    else if (/tháng\s*(9|09|chín)/i.test(lower)) queryMonth = '2026-09';
+    else if (/tháng\s*(8|08|tám)/i.test(lower)) queryMonth = '2026-08';
+    else if (/tháng\s*(7|07|bảy)/i.test(lower)) queryMonth = '2026-07';
+    else if (/tháng\s*(6|06|sáu)/i.test(lower)) queryMonth = '2026-06';
+    else if (/tháng\s*(5|05|năm)/i.test(lower)) queryMonth = '2026-05';
+    else {
+      const mMatch = lower.match(/tháng\s*(\d{1,2})/);
+      if (mMatch) {
+        queryMonth = `2026-${String(parseInt(mMatch[1], 10)).padStart(2, '0')}`;
+      }
+    }
+
+    if (queryMonth) {
+      const st = monthlyMap[queryMonth];
+      if (st) {
+        const [y, m] = queryMonth.split('-');
+        const surplus = st.thu - st.chi;
+        return sendJson(res, {
+          reply: `- Tháng ${parseInt(m, 10)}/${y}: Thu ${fmt(st.thu)}, Chi ${fmt(st.chi)}, Thặng dư ${fmt(surplus)}.\n- Đánh giá: ${surplus >= 0 ? 'Thu nhập lớn hơn chi tiêu, tình hình tài chính tháng này rất tốt.' : 'Chi tiêu vượt thu nhập, bạn nên chú ý cân đối lại các khoản chi.'}`
+        });
+      } else {
+        const [y, m] = queryMonth.split('-');
+        return sendJson(res, {
+          reply: `- Chưa có dữ liệu giao dịch cho Tháng ${parseInt(m, 10)}/${y}. Dữ liệu hiện có gồm các tháng: ${Object.keys(monthlyMap).sort().map(k => 'Tháng ' + parseInt(k.split('-')[1], 10)).join(', ')}.`
+        });
+      }
+    }
+
+    // 2. Hỏi tổng quát các tháng / tháng mấy thì thu chi bao nhiêu
+    const isAllMonthsQuery = /tháng\s*mấy|các\s*tháng|từng\s*tháng|mỗi\s*tháng|tổng\s*hợp.*tháng|thống\s*kê.*tháng|bao\s*nhiêu.*tháng/i.test(lower);
+    if (isAllMonthsQuery || (lower.includes('tháng') && (lower.includes('bao nhiêu') || lower.includes('thu chi') || lower.includes('danh sách')))) {
+      const sortedKeys = Object.keys(monthlyMap).sort().reverse();
+      const lines = sortedKeys.map(k => {
+        const [y, m] = k.split('-');
+        const st = monthlyMap[k];
+        const surplus = st.thu - st.chi;
+        return `- Tháng ${parseInt(m, 10)}/${y}: Thu ${fmt(st.thu)}, Chi ${fmt(st.chi)} (Dư: ${fmt(surplus)})`;
+      });
+      return sendJson(res, {
+        reply: `Dưới đây là chi tiết thu chi theo từng tháng trong dữ liệu của bạn:\n${lines.join('\n')}\n- Tháng có thu nhập cao nhất là Tháng 10/2026.`
+      });
+    }
+
+    // 3. Mặc định phản hồi tổng quan (tương thích capture_all.py và câu hỏi chung)
     return sendJson(res, {
-      reply: '- Tháng này thu 26.500.000₫, chi 10.730.000₫, thặng dư 15.770.000₫.\n- Danh mục Mua sắm đang vượt ngân sách 250.000₫, bạn nên hạn chế mua thêm đồ dùng chưa cần thiết.'
+      reply: '- Tháng này (10/2026): Thu 26.500.000₫, Chi 10.980.000₫, thặng dư 15.520.000₫.\n- Danh mục Mua sắm đang vượt ngân sách 250.000₫, bạn nên hạn chế mua thêm đồ dùng chưa cần thiết.'
     });
   }
 
