@@ -157,6 +157,104 @@ document.addEventListener("layoutLoaded", () => {
     return text.trim();
   };
 
+  // Dữ liệu tài chính dành riêng cho Chatbot AI: tổng hợp chi tiết theo từng tháng
+  // giúp AI trả lời chính xác các câu hỏi như "tháng mấy thu chi bao nhiêu", "tháng 9 thế nào"...
+  const buildChatFinanceSummaryText = (transactions = []) => {
+    if (!transactions || transactions.length === 0) {
+      return "Người dùng chưa có dữ liệu giao dịch.";
+    }
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+    const categoryTotals = {};
+    const monthlyStats = {};
+
+    transactions.forEach((tx) => {
+      const amount = Number(tx.amount) || 0;
+      let monthStr = "";
+      if (tx.date) {
+        monthStr = String(tx.date).slice(0, 7); // 'YYYY-MM'
+      }
+      if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
+        const d = new Date(tx.date || Date.now());
+        if (!isNaN(d.getTime())) {
+          monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        } else {
+          monthStr = "Chưa rõ";
+        }
+      }
+
+      if (!monthlyStats[monthStr]) {
+        monthlyStats[monthStr] = {
+          thu: 0,
+          chi: 0,
+          categories: {},
+          txCount: 0,
+        };
+      }
+
+      monthlyStats[monthStr].txCount += 1;
+
+      if (tx.type === "THU") {
+        totalIncome += amount;
+        monthlyStats[monthStr].thu += amount;
+      } else {
+        totalExpense += amount;
+        monthlyStats[monthStr].chi += amount;
+        const cat = tx.category || "Khác";
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + amount;
+        monthlyStats[monthStr].categories[cat] =
+          (monthlyStats[monthStr].categories[cat] || 0) + amount;
+      }
+    });
+
+    const netBalance = totalIncome - totalExpense;
+
+    // Sắp xếp các tháng giảm dần (mới nhất đến cũ nhất)
+    const sortedMonths = Object.keys(monthlyStats).sort((a, b) => b.localeCompare(a));
+
+    const monthlyLines = sortedMonths.map((m) => {
+      const st = monthlyStats[m];
+      const surplus = st.thu - st.chi;
+      const [year, month] = m.split("-");
+      const monthLabel = year && month ? `Tháng ${parseInt(month, 10)}/${year} (${m})` : m;
+
+      // Tìm danh mục chi tiêu lớn nhất trong tháng nếu có
+      const topExpenseCat = Object.entries(st.categories)
+        .sort((a, b) => b[1] - a[1])[0];
+      const topCatText = topExpenseCat
+        ? ` | Chi nhiều nhất: ${topExpenseCat[0]} (${formatCurrency(topExpenseCat[1])})`
+        : "";
+
+      return `- ${monthLabel}: Thu ${formatCurrency(st.thu)}, Chi ${formatCurrency(st.chi)}, Thặng dư/Dư ${formatCurrency(surplus)}${topCatText}`;
+    }).join("\n");
+
+    const categoryLines =
+      Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
+        .join("\n") || "- (không có khoản chi nào)";
+
+    let text =
+      `=== BẢNG THỐNG KÊ THU CHI THEO TỪNG THÁNG ===\n` +
+      `${monthlyLines}\n\n` +
+      `=== TỔNG QUAN TẤT CẢ CÁC THÁNG ===\n` +
+      `- Tổng thu nhập toàn bộ: ${formatCurrency(totalIncome)}\n` +
+      `- Tổng chi tiêu toàn bộ: ${formatCurrency(totalExpense)}\n` +
+      `- Số dư tích luỹ: ${formatCurrency(netBalance)}\n` +
+      `- Chi tiêu theo danh mục tổng thể:\n${categoryLines}`;
+
+    if (transactions.length > 0) {
+      text += `\n\n=== DANH SÁCH GIAO DỊCH GẦN ĐÂY ===\n`;
+      transactions.slice(-25).forEach((tx) => {
+        const d = tx.date ? String(tx.date).slice(0, 10) : "";
+        text += `- ${d} | ${tx.type === "THU" ? "Thu" : "Chi"} | ${tx.category}: ${formatCurrency(tx.amount)}${tx.description ? ` (${tx.description})` : ""}\n`;
+      });
+    }
+
+    return text.trim();
+  };
+
   // Hiện thông báo nhỏ (toast) ở góc phải màn hình
   const showToast = (message, type = "success") => {
     const container = document.getElementById("toast-container");
@@ -818,7 +916,7 @@ document.addEventListener("layoutLoaded", () => {
       sendBtn.disabled = true;
       try {
         const transactions = await apiGetTransactions().catch(() => []);
-        const summary = buildFinanceSummaryText(transactions);
+        const summary = buildChatFinanceSummaryText(transactions);
         const reply = await apiChatWithAi(question, chatHistory, summary);
         const cleanReply = typeof cleanAiResponse === "function" ? cleanAiResponse(reply) : reply;
 

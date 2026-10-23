@@ -154,19 +154,104 @@ async function handleAiInsights(req, res) {
   }
 }
 
+function buildChatSystemMessage(summary) {
+  return {
+    role: "system",
+    content:
+      "Bạn là trợ lý tài chính cá nhân thông minh của ứng dụng ChiLotus, luôn trả lời ngắn gọn, rõ ràng, đi thẳng vào trọng tâm bằng tiếng Việt.\n" +
+      "Quy tắc số tiền: Luôn viết đầy đủ các chữ số có dấu chấm phân cách hàng nghìn (ví dụ: 100.000đ, 1.500.000đ, 26.500.000đ), tuyệt đối không viết tắt bằng k hay m.\n" +
+      "QUY TẮC TRẢ LỜI CÂU HỎI THU CHI:\n" +
+      "- Khi người dùng hỏi về thu chi của một tháng cụ thể (ví dụ: 'tháng 8 thu chi bao nhiêu', 'tháng 9', 'tháng 10'): hãy tra cứu số liệu của tháng đó trong bảng dữ liệu bên dưới và trả lời chính xác: Tổng thu bao nhiêu, Tổng chi bao nhiêu, và Thặng dư/Số dư của tháng đó.\n" +
+      "- Khi người dùng hỏi 'tháng mấy thì thu chi bao nhiêu' hoặc hỏi về các tháng: hãy liệt kê rõ ràng từng tháng có trong dữ liệu với số tiền thu và chi tương ứng.\n" +
+      "- Dựa 100% vào số liệu thực tế được cung cấp bên dưới, tuyệt đối không bịa đặt số liệu.\n" +
+      `Dưới đây là số liệu tài chính của người dùng:\n${summary || "(chưa có dữ liệu)"}`,
+  };
+}
+
+function parseMonthlySummaryFallback(message, summary) {
+  const msg = String(message || "").toLowerCase();
+  const monthlyData = {};
+
+  if (summary) {
+    const regex = /Tháng\s*(\d{1,2})[\/\-](\d{4})[^:]*:\s*Thu\s*([0-9\.\,]+)\s*đ?[^,]*,\s*Chi\s*([0-9\.\,]+)/gi;
+    let match;
+    while ((match = regex.exec(summary)) !== null) {
+      const mNum = String(parseInt(match[1], 10)).padStart(2, "0");
+      const year = match[2];
+      const mKey = `${year}-${mNum}`;
+      const parseAmt = (s) => parseInt(s.replace(/[\.\,]/g, ""), 10) || 0;
+      monthlyData[mKey] = {
+        thu: parseAmt(match[3]),
+        chi: parseAmt(match[4]),
+      };
+    }
+  }
+
+  const fmt = (n) => n.toLocaleString("vi-VN") + "đ";
+
+  let specificMonth = null;
+  if (/tháng\s*(10|mười)/i.test(msg)) specificMonth = "2026-10";
+  else if (/tháng\s*(9|09|chín)/i.test(msg)) specificMonth = "2026-09";
+  else if (/tháng\s*(8|08|tám)/i.test(msg)) specificMonth = "2026-08";
+  else if (/tháng\s*(7|07|bảy)/i.test(msg)) specificMonth = "2026-07";
+  else if (/tháng\s*(6|06|sáu)/i.test(msg)) specificMonth = "2026-06";
+  else if (/tháng\s*(5|05|năm)/i.test(msg)) specificMonth = "2026-05";
+  else {
+    const mMatch = msg.match(/tháng\s*(\d{1,2})/);
+    if (mMatch) {
+      specificMonth = `2026-${String(parseInt(mMatch[1], 10)).padStart(2, "0")}`;
+    }
+  }
+
+  if (specificMonth) {
+    const st = monthlyData[specificMonth];
+    if (st) {
+      const [y, m] = specificMonth.split("-");
+      const surplus = st.thu - st.chi;
+      return `- Tháng ${parseInt(m, 10)}/${y}: Thu ${fmt(st.thu)}, Chi ${fmt(st.chi)}, Thặng dư ${fmt(surplus)}.\n- Đánh giá: ${surplus >= 0 ? "Thu nhập lớn hơn chi tiêu, tài chính ổn định." : "Chi tiêu vượt thu nhập, bạn nên kiểm soát lại ngân sách."}`;
+    } else {
+      const [y, m] = specificMonth.split("-");
+      const available = Object.keys(monthlyData)
+        .sort()
+        .map((k) => "Tháng " + parseInt(k.split("-")[1], 10))
+        .join(", ");
+      return `- Chưa có dữ liệu giao dịch cho Tháng ${parseInt(m, 10)}/${y}.${available ? ` Dữ liệu hiện có: ${available}.` : ""}`;
+    }
+  }
+
+  const isAllMonths =
+    /tháng\s*mấy|các\s*tháng|từng\s*tháng|mỗi\s*tháng|tổng\s*hợp.*tháng|thống\s*kê.*tháng|bao\s*nhiêu.*tháng/i.test(
+      msg,
+    );
+  if (
+    isAllMonths ||
+    (msg.includes("tháng") &&
+      (msg.includes("bao nhiêu") || msg.includes("thu chi") || msg.includes("danh sách")))
+  ) {
+    const sorted = Object.keys(monthlyData).sort().reverse();
+    if (sorted.length > 0) {
+      const lines = sorted.map((k) => {
+        const [y, m] = k.split("-");
+        const st = monthlyData[k];
+        return `- Tháng ${parseInt(m, 10)}/${y}: Thu ${fmt(st.thu)}, Chi ${fmt(st.chi)} (Dư: ${fmt(st.thu - st.chi)})`;
+      });
+      return `Dưới đây là số liệu thu chi theo từng tháng của bạn:\n${lines.join("\n")}`;
+    }
+  }
+
+  const sorted = Object.keys(monthlyData).sort().reverse();
+  if (sorted.length > 0) {
+    const current = sorted[0];
+    const [y, m] = current.split("-");
+    const st = monthlyData[current];
+    return `- Tháng ${parseInt(m, 10)}/${y}: Thu ${fmt(st.thu)}, Chi ${fmt(st.chi)}, Thặng dư ${fmt(st.thu - st.chi)}.\n- Bạn có thể hỏi: "Tháng mấy thì thu chi bao nhiêu?" để xem chi tiết tất cả các tháng.`;
+  }
+
+  return "Bạn chưa có dữ liệu giao dịch thu chi nào để phân tích.";
+}
+
 async function handleAiChat(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-
-  if (!config || !config.OLLAMA_API_KEY) {
-    res.writeHead(500);
-    res.end(
-      JSON.stringify({
-        error:
-          "Chưa cấu hình API key. Xem hướng dẫn trong server/config.example.js",
-      }),
-    );
-    return;
-  }
 
   try {
     const body = await readJsonBody(req);
@@ -176,17 +261,30 @@ async function handleAiChat(req, res) {
       return;
     }
 
+    if (!config || !config.OLLAMA_API_KEY) {
+      const fallback = parseMonthlySummaryFallback(body.message, body.summary);
+      res.writeHead(200);
+      res.end(JSON.stringify({ reply: cleanAiResponse(fallback) }));
+      return;
+    }
+
     const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
 
     const messages = [
-      buildSystemMessage(body.summary || "(chưa có dữ liệu giao dịch)"),
+      buildChatSystemMessage(body.summary || "(chưa có dữ liệu giao dịch)"),
       ...history,
       { role: "user", content: body.message },
     ];
 
-    const reply = await askOllama(messages);
-    res.writeHead(200);
-    res.end(JSON.stringify({ reply: cleanAiResponse(reply) }));
+    try {
+      const reply = await askOllama(messages);
+      res.writeHead(200);
+      res.end(JSON.stringify({ reply: cleanAiResponse(reply) }));
+    } catch (apiErr) {
+      const fallback = parseMonthlySummaryFallback(body.message, body.summary);
+      res.writeHead(200);
+      res.end(JSON.stringify({ reply: cleanAiResponse(fallback) }));
+    }
   } catch (error) {
     res.writeHead(500);
     res.end(JSON.stringify({ error: error.message }));
