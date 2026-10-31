@@ -40,11 +40,10 @@ async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    // Token hết hạn hoặc không hợp lệ -> đăng xuất về trang login (trừ trang login)
     if (res.status === 401 && !window.location.pathname.includes('login.html')) {
       logout();
     }
-    throw new Error((data && data.error) || `Lỗi HTTP ${res.status}`);
+    throw new Error((data && (data.error || data.message)) || `Lỗi kết nối máy chủ (${res.status})`);
   }
   return data;
 }

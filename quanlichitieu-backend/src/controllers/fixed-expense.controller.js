@@ -83,6 +83,13 @@ exports.getFixedExpenses = async (req, res, next) => {
         status = 'UPCOMING'; // Tháng tương lai
       }
 
+      const statusLabels = {
+        DEDUCTED: 'Đã trừ',
+        PENDING: 'Đến hạn hôm nay',
+        MISSED: 'Chưa trừ',
+        UPCOMING: 'Chưa đến hạn',
+      };
+
       return {
         id: expense.id,
         userId: expense.userId,
@@ -95,7 +102,8 @@ exports.getFixedExpenses = async (req, res, next) => {
         month: targetMonth,
         targetDay,
         isDeducted,
-        status
+        status,
+        statusLabel: statusLabels[status] || 'Chưa đến hạn',
       };
     });
 
@@ -104,28 +112,24 @@ exports.getFixedExpenses = async (req, res, next) => {
     next(error);
   }
 };
-// POST /api/fixed-expenses
 
 exports.createFixedExpense = async (req, res, next) => {
   try {
-    // req.body là object JSON frontend gửi từ apiCreateFixedExpense().
     const { amount, category, description, deductDay } = req.body;
-    // Dữ liệu từ form có thể là chuỗi nên cần đổi về số trước khi kiểm tra/lưu.
     const parsedAmount = parseFloat(amount);
     if (!category || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ message: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.' });
+      return res.status(400).json({ error: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.', message: 'Vui lòng nhập số tiền hợp lệ (lớn hơn 0) và danh mục.' });
     }
 
     let parsedDeductDay = 1;
     if (deductDay !== undefined && deductDay !== null && deductDay !== '') {
       const rawDay = parseInt(deductDay, 10);
       if (isNaN(rawDay) || rawDay < 1 || rawDay > 31) {
-        return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+        return res.status(400).json({ error: 'Ngày trừ tiền phải từ 1 đến 31.', message: 'Ngày trừ tiền phải từ 1 đến 31.' });
       }
       parsedDeductDay = rawDay;
     }
 
-    // Gắn userId lấy từ token để lịch của mỗi người dùng được tách riêng.
     const fixedExpense = await prisma.fixedExpense.create({
       data: {
         userId: req.user.id,
@@ -136,34 +140,30 @@ exports.createFixedExpense = async (req, res, next) => {
       }
     });
 
-
     res.status(201).json(fixedExpense);
   } catch (error) {
     next(error);
   }
 };
 
-// PUT /api/fixed-expenses/:id
-// Cho phép sửa một phần dữ liệu của lịch chi.
 exports.updateFixedExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { amount, category, description, deductDay } = req.body;
 
-    // Kiểm tra đồng thời id và userId để user không sửa lịch của người khác.
     const existing = await prisma.fixedExpense.findFirst({
       where: { id, userId: req.user.id }
     });
 
     if (!existing) {
-      return res.status(404).json({ message: 'Không tìm thấy khoản chi cố định' });
+      return res.status(404).json({ error: 'Không tìm thấy khoản chi cố định.', message: 'Không tìm thấy khoản chi cố định.' });
     }
 
     let parsedAmount;
     if (amount !== undefined) {
       parsedAmount = parseFloat(amount);
       if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        return res.status(400).json({ message: 'Số tiền phải là số lớn hơn 0.' });
+        return res.status(400).json({ error: 'Số tiền phải là số lớn hơn 0.', message: 'Số tiền phải là số lớn hơn 0.' });
       }
     }
 
@@ -171,11 +171,10 @@ exports.updateFixedExpense = async (req, res, next) => {
     if (deductDay !== undefined) {
       parsedDeductDay = parseInt(deductDay);
       if (parsedDeductDay < 1 || parsedDeductDay > 31) {
-        return res.status(400).json({ message: 'Ngày trừ tiền phải từ 1 đến 31.' });
+        return res.status(400).json({ error: 'Ngày trừ tiền phải từ 1 đến 31.', message: 'Ngày trừ tiền phải từ 1 đến 31.' });
       }
     }
 
-    // Trường nào frontend không gửi sẽ là undefined và Prisma giữ nguyên giá trị cũ.
     const updated = await prisma.fixedExpense.update({
       where: { id },
       data: {
@@ -192,24 +191,21 @@ exports.updateFixedExpense = async (req, res, next) => {
   }
 };
 
-// DELETE /api/fixed-expenses/:id
-// Xóa lịch để ngừng các lần thanh toán sau này; lịch sử Transaction cũ vẫn còn.
 exports.deleteFixedExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Kiểm tra quyền sở hữu trước khi xóa.
     const existing = await prisma.fixedExpense.findFirst({
       where: { id, userId: req.user.id }
     });
 
     if (!existing) {
-      return res.status(404).json({ message: 'Không tìm thấy khoản chi cố định' });
+      return res.status(404).json({ error: 'Không tìm thấy khoản chi cố định.', message: 'Không tìm thấy khoản chi cố định.' });
     }
 
     await prisma.fixedExpense.delete({ where: { id } });
 
-    res.json({ message: 'Đã xóa khoản chi cố định' });
+    res.json({ message: 'Đã xóa khoản chi cố định.' });
   } catch (error) {
     next(error);
   }

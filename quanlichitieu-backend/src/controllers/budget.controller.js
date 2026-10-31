@@ -63,7 +63,8 @@ exports.getBudgets = asyncHandler(async (req, res) => {
       remaining: Math.max(b.limitAmount - spent, 0),
       exceeded: spent > b.limitAmount,
       percentUsed,
-      warning: percentUsed >= 80, // FE hiển thị nhãn "Cảnh báo" từ 80%
+      warning: percentUsed >= 80,
+      statusLabel: spent > b.limitAmount ? 'Vượt hạn mức' : percentUsed >= 80 ? 'Sắp chạm hạn mức' : 'Trong hạn mức',
       createdAt: b.createdAt,
     };
   });

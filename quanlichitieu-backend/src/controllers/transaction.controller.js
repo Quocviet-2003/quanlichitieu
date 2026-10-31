@@ -59,20 +59,18 @@ function parseCoords(body) {
 
   const lat = toNumber(body.latitude);
   const lng = toNumber(body.longitude);
-  assert(Number.isFinite(lat) && Number.isFinite(lng), 400, 'latitude/longitude phải là số.');
-  assert(lat >= -90 && lat <= 90, 400, 'Vĩ độ (latitude) phải nằm trong khoảng [-90, 90].');
-  assert(lng >= -180 && lng <= 180, 400, 'Kinh độ (longitude) phải nằm trong khoảng [-180, 180].');
+  assert(Number.isFinite(lat) && Number.isFinite(lng), 400, 'Vĩ độ và kinh độ phải là số hợp lệ.');
+  assert(lat >= -90 && lat <= 90, 400, 'Vĩ độ phải nằm trong khoảng [-90, 90].');
+  assert(lng >= -180 && lng <= 180, 400, 'Kinh độ phải nằm trong khoảng [-180, 180].');
   return { latitude: lat, longitude: lng };
 }
 
-// [Dashboard] GET /api/transactions trả giao dịch của tài khoản đang đăng nhập.
 exports.getTransactions = asyncHandler(async (req, res) => {
   const where = { userId: req.userId };
 
-  // Bộ lọc tuỳ chọn
   if (req.query.type) {
-    assert(VALID_TYPES.includes(req.query.type), 400, "Tham số 'type' chỉ nhận 'THU' hoặc 'CHI'.");
-    where.type = req.query.type; // LỌC LOẠI/
+    assert(VALID_TYPES.includes(req.query.type), 400, "Loại giao dịch chỉ nhận 'THU' hoặc 'CHI'.");
+    where.type = req.query.type;
   }
   if (req.query.category) {
     where.category = String(req.query.category).trim(); // LỌC DMUC//

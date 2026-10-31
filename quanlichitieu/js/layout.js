@@ -56,17 +56,13 @@ async function loadLayout() {
         );
         if (nameEl) nameEl.textContent = savedUser.name;
       }
-      // Email tài khoản hiển thị dưới tên trong thẻ user (bấm vào để mở trang cài đặt)
       const emailEl = document.getElementById("sidebar-user-email");
       if (emailEl && savedUser.email) emailEl.textContent = savedUser.email;
-      const avatarImg = document.querySelector(
-        '#layout-sidebar img[alt="Avatar"]',
-      );
+      const avatarImg = document.getElementById("sidebar-user-avatar") || document.querySelector("#layout-sidebar img");
       if (avatarImg && savedUser.avatar) avatarImg.src = savedUser.avatar;
 
-      // Cập nhật giao diện menu dựa trên role
       const isAdmin =
-        savedUser.role && savedUser.role.toUpperCase() === "ADMIN";
+        savedUser.role && (savedUser.role.toUpperCase() === "ADMIN" || savedUser.role === "Quản trị viên");
 
       if (isAdmin) {
         // Admin: Ẩn tất cả các menu thường, chỉ hiện Quản trị hệ thống

@@ -120,7 +120,7 @@ exports.getMonthlyTrend = asyncHandler(async (req, res) => {
   // B1. Đọc số tháng từ URL; không gửi thì lấy 6 tháng
   let months = parseInt(req.query.months, 10);
   if (!Number.isFinite(months)) months = 6;
-  assert(months >= 1 && months <= 24, 400, "'months' phải nằm trong khoảng 1 đến 24.");
+  assert(months >= 1 && months <= 24, 400, 'Số tháng thống kê phải nằm trong khoảng 1 đến 24.');
 
   // B2. Tạo các ô tháng từ cũ đến mới, mỗi ô có ngày bắt đầu và kết thúc
   const buckets = [];
@@ -165,7 +165,7 @@ exports.getMonthlyTrend = asyncHandler(async (req, res) => {
 exports.getCategoryBreakdown = asyncHandler(async (req, res) => {
   // B1. Chọn loại giao dịch: mặc định thống kê khoản CHI
   const type = req.query.type || 'CHI';
-  assert(['THU', 'CHI'].includes(type), 400, "Tham số 'type' chỉ nhận 'THU' hoặc 'CHI'.");
+  assert(['THU', 'CHI'].includes(type), 400, "Loại giao dịch chỉ nhận 'THU' hoặc 'CHI'.");
 
   // B2. Chỉ lấy giao dịch của người đang đăng nhập và đúng loại THU/CHI
   const where = { userId: req.userId, type };
@@ -231,7 +231,7 @@ exports.getDailyTrend = asyncHandler(async (req, res) => {
   } else {
     let days = parseInt(req.query.days, 10);
     if (!Number.isFinite(days)) days = 30;
-    assert(days >= 1 && days <= 365, 400, "'days' phải nằm trong khoảng 1 đến 365.");
+    assert(days >= 1 && days <= 365, 400, 'Số ngày thống kê phải nằm trong khoảng 1 đến 365.');
 
     const todayUtcMidnight = new Date(`${dayKeyOf(new Date())}T00:00:00.000Z`);
     for (let i = days - 1; i >= 0; i--) {
