@@ -7,19 +7,16 @@ const notFoundHandler = (req, res) => {
   res.status(404).json({ error: `Không tìm thấy đường dẫn: ${req.method} ${req.originalUrl}` });
 };
 
-// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  // Body JSON gửi lên sai cú pháp
   if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Dữ liệu JSON gửi lên không hợp lệ.' });
+    return res.status(400).json({ error: 'Dữ liệu gửi lên không đúng định dạng.' });
   }
 
   const status = err.status || 500;
-  if (status >= 500) console.error('[SERVER ERROR]', err);
+  if (status >= 500) console.error('[LỖI MÁY CHỦ]', err);
 
   res.status(status).json({
-    error: err.message || 'Lỗi server không xác định.',
-    // Mã lỗi nghiệp vụ (VD: INSUFFICIENT_BALANCE) để FE biết đường xử lý
+    error: err.message || 'Lỗi máy chủ không xác định.',
     ...(err.code ? { code: err.code } : {}),
   });
 };

@@ -29,13 +29,28 @@ function assert(condition, status, message) {
   if (!condition) throw new ApiError(status, message);
 }
 
-// Kiểm tra các trường bắt buộc tồn tại trong body
+const FIELD_NAMES_VI = {
+  email: 'email',
+  password: 'mật khẩu',
+  oldPassword: 'mật khẩu hiện tại',
+  newPassword: 'mật khẩu mới',
+  name: 'tên',
+  amount: 'số tiền',
+  type: 'loại giao dịch',
+  category: 'danh mục',
+  limitAmount: 'hạn mức ngân sách',
+  targetAmount: 'số tiền mục tiêu',
+  status: 'trạng thái',
+  summary: 'dữ liệu tổng hợp',
+  message: 'nội dung tin nhắn',
+};
+
 function requireFields(body, fields) {
   fields.forEach((f) =>
     assert(
       body[f] !== undefined && body[f] !== null && body[f] !== '',
       400,
-      `Thiếu trường bắt buộc: ${f}`
+      `Thiếu thông tin bắt buộc: ${FIELD_NAMES_VI[f] || f}`
     )
   );
 }
@@ -51,7 +66,11 @@ function toNumber(v) {
 function sanitizeUser(user) {
   if (!user) return user;
   const { password, ...rest } = user;
-  return rest;
+  return {
+    ...rest,
+    roleLabel: rest.role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng',
+    statusLabel: rest.status === 'BLOCKED' ? 'Bị khóa' : 'Hoạt động',
+  };
 }
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -80,18 +99,17 @@ function dayKeyOf(d) {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
-// Lọc from/to ('YYYY-MM-DD') từ query thành điều kiện Prisma cho trường date
 function dateFilterFromQuery(q) {
   const filter = {};
   if (q.from) {
     const from = new Date(`${q.from}T00:00:00.000Z`);
-    assert(!isNaN(from.getTime()), 400, "Tham số 'from' không hợp lệ (định dạng YYYY-MM-DD).");
+    assert(!isNaN(from.getTime()), 400, 'Ngày bắt đầu không hợp lệ (định dạng YYYY-MM-DD).');
     filter.gte = from;
   }
   if (q.to) {
     const to = new Date(`${q.to}T00:00:00.000Z`);
-    assert(!isNaN(to.getTime()), 400, "Tham số 'to' không hợp lệ (định dạng YYYY-MM-DD).");
-    to.setUTCDate(to.getUTCDate() + 1); // bao trọn ngày 'to'
+    assert(!isNaN(to.getTime()), 400, 'Ngày kết thúc không hợp lệ (định dạng YYYY-MM-DD).');
+    to.setUTCDate(to.getUTCDate() + 1);
     filter.lt = to;
   }
   return filter;

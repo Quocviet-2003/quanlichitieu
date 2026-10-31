@@ -78,18 +78,16 @@ document.addEventListener("layoutLoaded", () => {
 
   // --- 2. HÀM TIỆN ÍCH DÙNG CHUNG ---
 
-  // Định dạng số tiền theo kiểu Việt Nam, VD: 1500000 -> "1.500.000 ₫"
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(amount);
 
-  // Định dạng ngày, VD: "2026-08-12" -> "12 Aug 2026"
   const formatDate = (dateStr) =>
-    new Date(dateStr).toLocaleDateString("en-GB", {
+    new Date(dateStr).toLocaleDateString("vi-VN", {
       day: "2-digit",
-      month: "short",
+      month: "2-digit",
       year: "numeric",
     });
 
@@ -952,7 +950,34 @@ document.addEventListener("layoutLoaded", () => {
     const emptyHtml =
       '<p class="px-4 py-6 text-center text-slate-500 text-sm">Không có thông báo nào.</p>';
 
-    const buildRow = (icon, colorClass, title, desc) => `
+    const getReadKeys = () => {
+      try {
+        const uid = getCurrentUser()?.id || "guest";
+        return JSON.parse(localStorage.getItem(`read_notifs_${uid}`) || "[]");
+      } catch {
+        return [];
+      }
+    };
+
+    const saveReadKeys = (keys) => {
+      try {
+        const uid = getCurrentUser()?.id || "guest";
+        localStorage.setItem(`read_notifs_${uid}`, JSON.stringify([...new Set(keys)]));
+      } catch {}
+    };
+
+    const buildRow = (icon, colorClass, title, desc, isRead = false) => `
+      <div class="px-4 py-3 flex gap-3 items-start ${isRead ? "opacity-70" : "bg-blue-50/30"}">
+        <div class="tx-icon ${colorClass} shrink-0">
+          <i data-icon="${icon}" class="w-4 h-4"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-slate-900">${title}</p>
+          <p class="text-xs text-slate-500">${desc}</p>
+        </div>
+        ${!isRead ? '<div class="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>' : ""}
+      </div>`;
+    const _unusedRow = (icon, colorClass, title, desc) => `
       <div class="px-4 py-3 flex gap-3 items-start">
         <div class="tx-icon ${colorClass} shrink-0">
           <i data-icon="${icon}" class="w-4 h-4"></i>
@@ -965,6 +990,7 @@ document.addEventListener("layoutLoaded", () => {
 
     // Gom cảnh báo ngân sách (vượt/sắp vượt) + mục tiêu tiết kiệm vừa hoàn thành + Thông báo từ DB
     let unreadApiCount = 0;
+    let currentNotifKeys = [];
 
     const loadNotifications = async () => {
       try {
@@ -977,30 +1003,48 @@ document.addEventListener("layoutLoaded", () => {
           apiGetNotifications().catch(() => []),
         ]);
 
+        const readKeys = getReadKeys();
+        currentNotifKeys = [];
+        unreadApiCount = 0;
+        let unreadTotal = 0;
         const rows = [];
         budgets.forEach((b) => {
           if (b.exceeded) {
+            const key = `budget-exceeded-${b.id}-${b.month || ""}-${b.spent}`;
+            currentNotifKeys.push(key);
+            const isRead = readKeys.includes(key);
+            if (!isRead) unreadTotal++;
             rows.push(
               buildRow(
                 "alert-circle",
                 "tx-icon-rose",
                 `Vượt ngân sách "${b.category}"`,
                 `Đã chi ${formatCurrency(b.spent)} / hạn mức ${formatCurrency(b.limitAmount)} tháng này.`,
+                isRead,
               ),
             );
           } else if (b.warning) {
+            const key = `budget-warning-${b.id}-${b.month || ""}-${b.percentUsed}`;
+            currentNotifKeys.push(key);
+            const isRead = readKeys.includes(key);
+            if (!isRead) unreadTotal++;
             rows.push(
               buildRow(
                 "alert-circle",
                 "tx-icon-yellow",
                 `Sắp vượt ngân sách "${b.category}"`,
                 `Đã dùng ${b.percentUsed}% hạn mức (${formatCurrency(b.spent)} / ${formatCurrency(b.limitAmount)}).`,
+                isRead,
               ),
             );
           }
         });
         goals.forEach((g) => {
-          if (g.status === "COMPLETED") {
+          if (g.status === "COMPLETED" || g.status === "Đã hoàn thành") {
+            const key = `goal-completed-${g.id}`;
+            currentNotifKeys.push(key);
+            const isRead = readKeys.includes(key);
+            if (!isRead) unreadTotal++;
             // Tạo một dòng thông báo cho chuông.
             rows.push(
               buildRow(
@@ -1008,6 +1052,7 @@ document.addEventListener("layoutLoaded", () => {
                 "tx-icon-emerald",
                 `Hoàn thành mục tiêu "${g.name}"`,
                 `Bạn đã đạt ${formatCurrency(g.targetAmount)}. Chúc mừng!`,
+                isRead,
               ),
             );
           }
@@ -1015,7 +1060,11 @@ document.addEventListener("layoutLoaded", () => {
 
         // Thêm thông báo từ Database (API)
         apiNotifs.forEach((n) => {
+          const key = `api-notif-${n.id}`;
+          currentNotifKeys.push(key);
+          const isRead = Boolean(n.isRead) || readKeys.includes(key);
           if (!n.isRead) unreadApiCount++;
+          if (!isRead) unreadTotal++;
 
           let icon = "bell";
           let colorClass = "tx-icon-blue";
@@ -1025,7 +1074,7 @@ document.addEventListener("layoutLoaded", () => {
           }
 
           rows.push(`
-            <div class="px-4 py-3 flex gap-3 items-start ${n.isRead ? "opacity-70" : "bg-blue-50/30"}" data-id="${n.id}">
+            <div class="px-4 py-3 flex gap-3 items-start ${isRead ? "opacity-70" : "bg-blue-50/30"}" data-id="${n.id}">
               <div class="tx-icon ${colorClass} shrink-0">
                 <i data-icon="${icon}" class="w-4 h-4"></i>
               </div>
@@ -1034,7 +1083,7 @@ document.addEventListener("layoutLoaded", () => {
                 <p class="text-xs text-slate-500 mt-0.5">${n.message}</p>
                 <p class="text-[10px] text-slate-400 mt-1">${new Date(n.createdAt).toLocaleString("vi-VN")}</p>
               </div>
-              ${!n.isRead ? '<div class="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>' : ""}
+              ${!isRead ? '<div class="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>' : ""}
             </div>
           `);
         });
@@ -1044,7 +1093,7 @@ document.addEventListener("layoutLoaded", () => {
         renderIcons(listEl);
         // Nếu có thông báo thì hiện chấm đỏ.
         // Nếu không có thì ẩn chấm đỏ.
-        dot.classList.toggle("hidden", rows.length === 0);
+        dot.classList.toggle("hidden", unreadTotal === 0);
       } catch (error) {
         listEl.innerHTML = emptyHtml;
       }
@@ -1054,7 +1103,20 @@ document.addEventListener("layoutLoaded", () => {
       e.stopPropagation();
       panel.classList.toggle("hidden");
 
-      if (!panel.classList.contains("hidden") && unreadApiCount > 0) {
+      if (!panel.classList.contains("hidden")) {
+        dot.classList.add("hidden");
+        saveReadKeys([...getReadKeys(), ...currentNotifKeys]);
+        if (unreadApiCount > 0) {
+          try {
+            await apiMarkAllNotificationsRead();
+            unreadApiCount = 0;
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        setTimeout(loadNotifications, 800);
+      }
+      if (false && !panel.classList.contains("hidden") && unreadApiCount > 0) {
         try {
           await apiMarkAllNotificationsRead();
           unreadApiCount = 0;
@@ -2218,11 +2280,10 @@ document.addEventListener("layoutLoaded", () => {
           : "text-rose-500";
     const barBgClass = (p) =>
       p >= 100 ? "bg-emerald-500" : p >= 70 ? "bg-blue-600" : "bg-rose-500";
-    // Nhận một mục tiêu từ mảng goals.
     const renderGoalCard = (goal, i) => {
       const ic = GOAL_ICONS[i % GOAL_ICONS.length];
-      const completed = goal.status === "COMPLETED";
-      const isLongTerm = goal.termType === "LONG_TERM";
+      const completed = goal.status === "COMPLETED" || goal.status === "Đã hoàn thành";
+      const isLongTerm = goal.termType === "LONG_TERM" || goal.termType === "Dài hạn";
       const termBadge = `<span class="text-xs font-medium px-2 py-0.5 ${isLongTerm ? "bg-purple-50 text-purple-700 rounded-md border border-purple-200/60" : "bg-blue-50 text-blue-700 rounded-md border border-blue-200/60"}">${isLongTerm ? "Dài hạn" : "Ngắn hạn"}</span>`;
       return `
         <div class="card card-hover p-5">
@@ -2835,7 +2896,6 @@ document.addEventListener("layoutLoaded", () => {
     }
     contentEl.classList.remove("hidden");
 
-    // ---- Thẻ số liệu tổng quan + log AI gần nhất ----
     const loadStats = async () => {
       try {
         const s = await apiAdminGetStats();
@@ -2844,17 +2904,24 @@ document.addEventListener("layoutLoaded", () => {
         document.getElementById("st-transactions").textContent =
           s.transactions.total;
 
+        const endpointMap = {
+          "ai-insights": "Phân tích chi tiêu",
+          "ai-chat": "Trò chuyện AI",
+        };
         const logsEl = document.getElementById("ai-recent-logs");
         logsEl.innerHTML =
           (s.ai.recentLogs || [])
             .map(
-              (log) => `
+              (log) => {
+                const epName = endpointMap[log.endpoint] || log.endpoint;
+                return `
           <div class="px-5 py-3 flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-medium text-slate-900 truncate">${log.user ? log.user.email : "(ẩn danh)"} • ${log.endpoint}</p>
-              <p class="text-xs text-slate-500">${formatDate(log.createdAt)} • ${log.model} • ${log.tokens} tokens</p>
+              <p class="text-sm font-medium text-slate-900 truncate">${log.user ? log.user.email : "(ẩn danh)"} • ${epName}</p>
+              <p class="text-xs text-slate-500">${formatDate(log.createdAt)} • ${log.model} • ${log.tokens} đơn vị từ</p>
             </div>
-          </div>`,
+          </div>`;
+              },
             )
             .join("") ||
           '<p class="px-5 py-6 text-center text-slate-500 text-sm">Chưa có ai dùng AI.</p>';
@@ -2863,7 +2930,6 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
 
-    // ---- Quản lý người dùng: tìm kiếm / khoá-mở ----
     const usersTbody = document.getElementById("admin-users-tbody");
 
     const renderUsers = async (q = "") => {
@@ -2871,14 +2937,14 @@ document.addEventListener("layoutLoaded", () => {
         const users = await apiAdminGetUsers(q);
         usersTbody.innerHTML = users
           .map((u) => {
-            const blocked = u.status === "BLOCKED";
+            const blocked = u.status === "BLOCKED" || u.status === "Bị khóa";
             const statusBadge = blocked
               ? '<span class="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-600 rounded-md border border-rose-200/50">Bị khóa</span>'
               : '<span class="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-200/50">Hoạt động</span>';
             const roleBadge =
-              u.role === "ADMIN"
-                ? '<span class="text-xs font-semibold px-2 py-1 bg-purple-50 text-purple-600 rounded-md">Admin</span>'
-                : '<span class="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md">User</span>';
+              u.role === "ADMIN" || u.role === "Quản trị viên"
+                ? '<span class="text-xs font-semibold px-2 py-1 bg-purple-50 text-purple-600 rounded-md">Quản trị viên</span>'
+                : '<span class="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md">Người dùng</span>';
 
             return `
             <tr class="hover:bg-slate-50">
@@ -2932,7 +2998,6 @@ document.addEventListener("layoutLoaded", () => {
     };
     renderUsers();
 
-    // Tìm kiếm người dùng (chờ 300ms sau khi ngừng gõ rồi mới gọi API)
     let searchTimer = null;
     document
       .getElementById("admin-user-search")
@@ -2941,7 +3006,6 @@ document.addEventListener("layoutLoaded", () => {
         searchTimer = setTimeout(() => renderUsers(e.target.value.trim()), 300);
       });
 
-    // ---- Cấu hình AI ----
     const loadAiSettings = async () => {
       try {
         const s = await apiAdminGetAiSettings();
@@ -2962,7 +3026,7 @@ document.addEventListener("layoutLoaded", () => {
           10,
         );
         if (!model) {
-          showToast("Vui lòng nhập tên model", "error");
+          showToast("Vui lòng nhập tên mô hình AI", "error");
           return;
         }
         if (!Number.isFinite(dailyQuota) || dailyQuota < 1) {
@@ -2975,31 +3039,28 @@ document.addEventListener("layoutLoaded", () => {
           showToast(
             `Đã lưu cấu hình AI (${res.model}, hạn mức ${res.dailyQuota}/ngày).`,
           );
-          loadStats(); // làm mới thẻ số liệu
+          loadStats();
         } catch (error) {
           showToast(error.message, "error");
         }
       });
 
-    loadStats(); // chạy cuối để log AI hiển thị đúng cấu hình vừa tải
+    loadStats();
   };
 
-  // --- 17. CHI CỐ ĐỊNH HÀNG THÁNG ---
   const initFixedExpenses = () => {
-    // Chỉ chạy phần này trên trang có vùng danh sách chi cố định.
     const listEl = document.getElementById("fixed-expense-list");
     if (!listEl) return;
     const modal = bindMiniModal("fixed-expense-modal");
 
-    // Chuyển một object FixedExpense nhận từ API thành một thẻ HTML trên giao diện.
     const renderCard = (item) => {
       const style = getIconForCategory(item.category);
       let badge = '';
-      if (item.status === 'DEDUCTED') {
+      if (item.status === 'DEDUCTED' || item.status === 'Đã trừ') {
         badge = '<span class="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-200/50">Đã trừ</span>';
-      } else if (item.status === 'PENDING') {
+      } else if (item.status === 'PENDING' || item.status === 'Đến hạn hôm nay') {
         badge = '<span class="text-xs font-medium px-2 py-1 bg-amber-50 text-amber-600 rounded-md border border-amber-200/50">Đến hạn hôm nay</span>';
-      } else if (item.status === 'MISSED') {
+      } else if (item.status === 'MISSED' || item.status === 'Chưa trừ') {
         badge = '<span class="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-600 rounded-md border border-rose-200/50">Chưa trừ</span>';
       } else {
         badge = '<span class="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-md">Chưa đến hạn</span>';

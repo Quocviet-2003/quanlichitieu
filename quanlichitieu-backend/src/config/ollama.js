@@ -21,12 +21,11 @@ async function resolveModel() {
  * Trả về: { model, content, promptTokens, completionTokens }
  */
 async function callOllama(messages) {
-  // Key xác thực Ollama, khác JWT đăng nhập.
   const apiKey = process.env.OLLAMA_API_KEY;
   if (!apiKey) {
     throw new ApiError(
       500,
-      "Chưa cấu hình API key AI trên server. Vui lòng điền OLLAMA_API_KEY vào file .env.",
+      "Chưa cấu hình khóa kết nối AI trên máy chủ.",
     );
   }
 

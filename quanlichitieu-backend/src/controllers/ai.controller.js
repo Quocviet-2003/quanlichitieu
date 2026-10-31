@@ -1,12 +1,3 @@
-/**
- * Proxy AI (giữ nguyên "hợp đồng" mà Frontend đang gọi):
- * - POST /api/ai-insights  body: { summary }                    -> 200 { insight }
- * - POST /api/ai-chat      body: { message, history, summary }  -> 200 { reply }
- * Lỗi trả về JSON { error } kèm status tương ứng.
- *
- * Mọi request đều được ghi vào bảng AiLog để Admin thống kê,
- * và bị giới hạn bởi hạn mức câu hỏi AI mỗi ngày (AppSetting 'ai_daily_quota').
- */
 const prisma = require("../config/db");
 const {
   asyncHandler,
@@ -17,7 +8,6 @@ const {
 const { getSetting } = require("../utils/settings");
 const { callOllama, estimateCost } = require("../config/ollama");
 
-// Giữ nguyên giọng điệu như server cũ của FE
 function buildSystemPrompt(summary) {
   return (
     "Bạn là trợ lý tài chính cá nhân, luôn trả lời ngắn gọn, đi thẳng vào trọng tâm bằng tiếng Việt.\n" +
@@ -25,64 +15,6 @@ function buildSystemPrompt(summary) {
     `Dưới đây là số liệu thu chi hiện tại của người dùng:\n${summary || "(chưa có dữ liệu)"}`
   );
 }
-
-async function checkQuota(userId) {
-  const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
-  if (!Number.isFinite(quota) || quota <= 0) return; // quota <= 0 coi như không giới hạn
-
-  const used = await prisma.aiLog.count({
-    where: {
-      userId,
-      endpoint: { in: ["ai-insights", "ai-chat"] },
-      createdAt: { gte: startOfToday() },
-    },
-  });
-  assert(
-    used < quota,
-    429,
-    `Bạn đã đạt hạn mức ${quota} câu hỏi AI mỗi ngày. Vui lòng thử lại vào ngày mai.`,
-  );
-}
-
-async function logUsage(userId, endpoint, result) {
-  try {
-    await prisma.aiLog.create({
-      data: {
-        userId,
-        endpoint,
-        model: result.model,
-        tokens: result.promptTokens + result.completionTokens,
-        costEstimate: estimateCost(
-          result.promptTokens,
-          result.completionTokens,
-        ),
-      },
-    });
-  } catch (err) {
-    // Ghi log thất bại không làm hỏng kết quả đã tạo
-    console.error("[AI LOG]", err.message);
-  }
-}
-
-// POST /api/ai-insights
-exports.getInsights = asyncHandler(async (req, res) => {
-  requireFields(req.body, ["summary"]);
-  await checkQuota(req.userId);
-
-  const messages = [
-    { role: "system", content: buildSystemPrompt(String(req.body.summary)) },
-    {
-      role: "user",
-      content:
-        "Hãy đưa ra nhận xét ngắn gọn, đi thẳng vào trọng tâm và một vài lời khuyên tài chính từ số liệu thu, chi, số dư trên. Viết số tiền rõ ràng đầy đủ (dạng 000.000đ), không viết tắt k hay m.",
-    },
-  ];
-
-  const result = await callOllama(messages);
-  await logUsage(req.userId, "ai-insights", result);
-
-  res.json({ insight: result.content });
-});
 
 function buildChatSystemPrompt(summary) {
   return (
@@ -189,7 +121,62 @@ function generateLocalChatReply(message, summary, transactions = []) {
   return "Bạn chưa có dữ liệu giao dịch thu chi nào để phân tích.";
 }
 
-// POST /api/ai-chat
+async function checkQuota(userId) {
+  const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
+  if (!Number.isFinite(quota) || quota <= 0) return;
+
+  const used = await prisma.aiLog.count({
+    where: {
+      userId,
+      endpoint: { in: ["ai-insights", "ai-chat", "Phân tích chi tiêu", "Trò chuyện AI"] },
+      createdAt: { gte: startOfToday() },
+    },
+  });
+  assert(
+    used < quota,
+    429,
+    `Bạn đã đạt hạn mức ${quota} câu hỏi AI mỗi ngày. Vui lòng thử lại vào ngày mai.`,
+  );
+}
+
+async function logUsage(userId, endpoint, result) {
+  try {
+    await prisma.aiLog.create({
+      data: {
+        userId,
+        endpoint,
+        model: result.model,
+        tokens: result.promptTokens + result.completionTokens,
+        costEstimate: estimateCost(
+          result.promptTokens,
+          result.completionTokens,
+        ),
+      },
+    });
+  } catch (err) {
+    console.error("[AI LOG]", err.message);
+  }
+}
+
+exports.getInsights = asyncHandler(async (req, res) => {
+  requireFields(req.body, ["summary"]);
+  await checkQuota(req.userId);
+
+  const messages = [
+    { role: "system", content: buildSystemPrompt(String(req.body.summary)) },
+    {
+      role: "user",
+      content:
+        "Hãy đưa ra nhận xét ngắn gọn, đi thẳng vào trọng tâm và một vài lời khuyên tài chính từ số liệu thu, chi, số dư trên. Viết số tiền rõ ràng đầy đủ (dạng 000.000đ), không viết tắt k hay m.",
+    },
+  ];
+
+  const result = await callOllama(messages);
+  await logUsage(req.userId, "Phân tích chi tiêu", result);
+
+  res.json({ insight: result.content });
+});
+
 exports.chat = asyncHandler(async (req, res) => {
   requireFields(req.body, ["message"]);
   assert(
@@ -199,7 +186,6 @@ exports.chat = asyncHandler(async (req, res) => {
   );
   await checkQuota(req.userId);
 
-  // Lấy dữ liệu giao dịch của người dùng nếu summary chưa có thống kê theo tháng
   let summary = String(req.body.summary || "").trim();
   let userTx = [];
   try {
@@ -229,10 +215,8 @@ exports.chat = asyncHandler(async (req, res) => {
       summary = summary ? `${summary}\n\n${extra}` : extra;
     }
   } catch (err) {
-    // Không cản trở tiến trình nếu truy vấn DB phụ trợ lỗi
   }
 
-  // Chỉ giữ tối đa 10 lượt hội thoại gần nhất, đúng như server cũ của FE
   const history = Array.isArray(req.body.history)
     ? req.body.history
       .filter(
@@ -255,10 +239,9 @@ exports.chat = asyncHandler(async (req, res) => {
 
   try {
     const result = await callOllama(messages);
-    await logUsage(req.userId, "ai-chat", result);
+    await logUsage(req.userId, "Trò chuyện AI", result);
     return res.json({ reply: result.content });
   } catch (err) {
-    // Nếu Ollama chưa có API key hoặc không kết nối được, fallback thông minh từ dữ liệu thu chi
     const fallback = generateLocalChatReply(req.body.message, summary, userTx);
     if (fallback) {
       return res.json({ reply: fallback });

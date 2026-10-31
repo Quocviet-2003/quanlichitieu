@@ -35,6 +35,8 @@ exports.getUsers = asyncHandler(async (req, res) => {
   res.json(
     users.map((u) => ({
       ...sanitizeUser(u),
+      roleLabel: u.role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng',
+      statusLabel: u.status === 'BLOCKED' ? 'Bị khóa' : 'Hoạt động',
       counts: {
         transactions: u._count.transactions,
         budgets: u._count.budgets,
@@ -44,13 +46,12 @@ exports.getUsers = asyncHandler(async (req, res) => {
   );
 });
 
-// PUT /api/admin/users/:id/status  body: { status: 'ACTIVE' | 'BLOCKED' }
 exports.setUserStatus = asyncHandler(async (req, res) => {
   requireFields(req.body, ['status']);
-  assert(['ACTIVE', 'BLOCKED'].includes(req.body.status), 400, "Trạng thái chỉ nhận 'ACTIVE' hoặc 'BLOCKED'.");
+  assert(['ACTIVE', 'BLOCKED'].includes(req.body.status), 400, 'Trạng thái tài khoản chỉ nhận Hoạt động hoặc Bị khóa.');
 
   const userId = req.params.id;
-  assert(isValidObjectId(userId), 400, 'ID người dùng không hợp lệ.');
+  assert(isValidObjectId(userId), 400, 'Mã người dùng không hợp lệ.');
   assert(userId !== req.userId, 400, 'Bạn không thể tự khóa chính mình.');
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -101,12 +102,19 @@ exports.getStats = asyncHandler(async (req, res) => {
     })
   );
 
-  // 10 lần gọi AI gần nhất
-  const recentLogs = await prisma.aiLog.findMany({
+  const rawLogs = await prisma.aiLog.findMany({
     orderBy: { createdAt: 'desc' },
     take: 10,
     include: { user: { select: { id: true, name: true, email: true } } },
   });
+  const endpointLabels = {
+    'ai-insights': 'Phân tích chi tiêu',
+    'ai-chat': 'Trò chuyện AI',
+  };
+  const recentLogs = rawLogs.map((l) => ({
+    ...l,
+    endpoint: endpointLabels[l.endpoint] || l.endpoint,
+  }));
 
   res.json({
     users: { total: totalUsers, active: activeUsers, blocked: blockedUsers },
@@ -123,10 +131,6 @@ exports.getStats = asyncHandler(async (req, res) => {
   });
 });
 
-
-// ---------- CẤU HÌNH AI ----------
-
-// GET /api/admin/ai-settings
 exports.getAiSettings = asyncHandler(async (req, res) => {
   const quota = parseInt((await getSetting('ai_daily_quota')) || '50', 10);
   res.json({
@@ -135,23 +139,22 @@ exports.getAiSettings = asyncHandler(async (req, res) => {
   });
 });
 
-// PUT /api/admin/ai-settings  body: { model?, dailyQuota? }
 exports.updateAiSettings = asyncHandler(async (req, res) => {
   let changed = false;
 
   if (req.body.model !== undefined) {
     const model = String(req.body.model).trim();
-    assert(model !== '', 400, 'Tên model không được để trống.');
+    assert(model !== '', 400, 'Tên mô hình AI không được để trống.');
     await setSetting('ollama_model', model);
     changed = true;
   }
   if (req.body.dailyQuota !== undefined) {
     const quota = parseInt(toNumber(req.body.dailyQuota), 10);
-    assert(Number.isFinite(quota) && quota >= 1 && quota <= 10000, 400, "Hạn mức 'dailyQuota' phải là số từ 1 đến 10000.");
+    assert(Number.isFinite(quota) && quota >= 1 && quota <= 10000, 400, 'Hạn mức câu hỏi mỗi ngày phải là số từ 1 đến 10000.');
     await setSetting('ai_daily_quota', String(quota));
     changed = true;
   }
 
   assert(changed, 400, 'Không có dữ liệu nào để cập nhật.');
-  await exports.getAiSettings(req, res); // Trả lại cấu hình sau khi cập nhật
+  await exports.getAiSettings(req, res);
 });

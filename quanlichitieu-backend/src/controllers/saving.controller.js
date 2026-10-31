@@ -24,7 +24,11 @@ function withPercent(goal) {
           Math.round((goal.currentAmount / goal.targetAmount) * 100),
         )
       : 0;
-  return { ...goal, percentComplete };
+  const statusLabel =
+    goal.status === "COMPLETED" ? "Đã hoàn thành" : "Đang thực hiện";
+  const termLabel =
+    goal.termType === "LONG_TERM" ? "Dài hạn" : "Ngắn hạn";
+  return { ...goal, percentComplete, statusLabel, termLabel };
 }
 
 exports.getSavingsGoals = asyncHandler(async (req, res) => {
@@ -141,7 +145,7 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
     assert(
       ["SHORT_TERM", "LONG_TERM"].includes(req.body.termType),
       400,
-      "termType chỉ nhận 'SHORT_TERM' hoặc 'LONG_TERM'.",
+      "Kỳ hạn tiết kiệm chỉ nhận Ngắn hạn hoặc Dài hạn.",
     );
     data.termType = req.body.termType;
   }
@@ -149,7 +153,7 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
     assert(
       ["IN_PROGRESS", "COMPLETED"].includes(req.body.status),
       400,
-      "Trạng thái chỉ nhận 'IN_PROGRESS' hoặc 'COMPLETED'.",
+      "Trạng thái mục tiêu chỉ nhận Đang thực hiện hoặc Đã hoàn thành.",
     );
     data.status = req.body.status;
   }
