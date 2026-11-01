@@ -1906,6 +1906,7 @@ document.addEventListener("layoutLoaded", () => {
     let lineChart = null;
 
     const drawLineChart = async (startDate, endDate) => {
+      if (!lineCanvas || !window.Chart) return;
       try {
         let labels, thuData, chiData;
 
@@ -1966,15 +1967,14 @@ document.addEventListener("layoutLoaded", () => {
 
     if (startDateInput && endDateInput) {
       const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const past30Days = new Date();
+      past30Days.setDate(now.getDate() - 30);
 
       const fmtDate = (d) => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       };
-      // Tự điền khoảng mặc định: đầu tháng → hôm nay (không phải 30 ngày gần nhất).
-      startDateInput.value = fmtDate(firstDay);
+      startDateInput.value = fmtDate(past30Days);
       endDateInput.value = fmtDate(now);
-      //Khi đổi ngày kiểm tra khoảng ngày rồi gọi lại drawLineChart().
       const handleChange = () => {
         if (startDateInput.value && endDateInput.value) {
           if (new Date(startDateInput.value) > new Date(endDateInput.value)) {
@@ -1982,7 +1982,9 @@ document.addEventListener("layoutLoaded", () => {
             startDateInput.value = endDateInput.value;
             return;
           }
-          drawLineChart(startDateInput.value, endDateInput.value);
+          if (lineCanvas) {
+            drawLineChart(startDateInput.value, endDateInput.value);
+          }
           drawDonutChart(startDateInput.value, endDateInput.value);
         }
       };
@@ -1990,7 +1992,9 @@ document.addEventListener("layoutLoaded", () => {
       startDateInput.addEventListener("change", handleChange);
       endDateInput.addEventListener("change", handleChange);
 
-      drawLineChart(startDateInput.value, endDateInput.value);
+      if (lineCanvas) {
+        drawLineChart(startDateInput.value, endDateInput.value);
+      }
     }
 
     const donutCanvas = document.getElementById("donutChart");
@@ -2000,7 +2004,23 @@ document.addEventListener("layoutLoaded", () => {
       apiGetCategoryBreakdown("CHI", start, end)
         .then((rows) => {
           if (donutChartInstance) donutChartInstance.destroy();
-          if (!rows.length) return;
+          const parent = donutCanvas.parentElement;
+          if (parent) {
+            parent.querySelectorAll(".donut-empty-state").forEach((el) => el.remove());
+          }
+
+          if (!rows.length) {
+            donutCanvas.classList.add("hidden");
+            if (parent) {
+              const p = document.createElement("p");
+              p.className = "donut-empty-state text-center text-slate-400 text-sm flex items-center justify-center h-full min-h-[200px]";
+              p.textContent = "Chưa có dữ liệu chi tiêu trong khoảng thời gian này";
+              parent.appendChild(p);
+            }
+            return;
+          }
+
+          donutCanvas.classList.remove("hidden");
           donutChartInstance = new Chart(donutCanvas, {
             type: "doughnut",
             data: {
@@ -2019,7 +2039,13 @@ document.addEventListener("layoutLoaded", () => {
               responsive: true,
               maintainAspectRatio: false,
               cutout: "68%",
-              plugins: { legend: { display: false } },
+              plugins: {
+                legend: {
+                  display: true,
+                  position: "bottom",
+                  labels: { usePointStyle: true, boxHeight: 6 }
+                }
+              },
             },
           });
         })

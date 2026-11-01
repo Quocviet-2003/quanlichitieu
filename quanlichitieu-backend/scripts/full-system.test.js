@@ -540,17 +540,18 @@ async function req(method, pathUrl, { token, body } = {}) {
     });
 
     await runTest('FIX-04', 'Khoản chi tạo sau ngày trừ tiền trong tháng hiển thị UPCOMING (chờ kỳ tới, không bị phạt MISSED)', async () => {
-      // Giả sử tạo ngày trừ là 1 hàng tháng, hôm nay là ngày 20
+      const pastDay = now.getDate() > 1 ? now.getDate() - 1 : 1;
+      const expectedStatus = now.getDate() > 1 ? 'UPCOMING' : 'PENDING';
       const { status, data } = await req('POST', '/api/fixed-expenses', {
         token: userToken,
-        body: { category: 'Điện nước', description: 'Tiền điện sinh hoạt', amount: 500000, deductDay: 1 },
+        body: { category: 'Điện nước', description: 'Tiền điện sinh hoạt', amount: 500000, deductDay: pastDay },
       });
       eq(status, 201, 'HTTP status');
 
       const listRes = await req('GET', `/api/fixed-expenses?month=${currentMonthKey}`, { token: userToken });
       const item = listRes.data.find((x) => x.id === data.id);
       ok(item, 'Tìm thấy khoản chi cố định');
-      eq(item.status, 'UPCOMING', 'Trạng thái');
+      eq(item.status, expectedStatus, 'Trạng thái');
       eq(item.isDeducted, false, 'Chưa trừ tiền');
     });
 
@@ -895,6 +896,30 @@ async function req(method, pathUrl, { token, body } = {}) {
       ok(data && (data.message || data.success), 'Thông báo đánh dấu thành công');
     });
 
+    await runTest('NOTI-03', 'Tạo thông báo chưa đọc, đánh dấu đã đọc và kiểm tra isRead=true', async () => {
+      await prisma.notification.create({
+        data: { userId, title: 'Thông báo kiểm thử', message: 'Nội dung kiểm thử', isRead: false },
+      });
+      const beforeRes = await req('GET', '/api/notifications', { token: userToken });
+      ok(beforeRes.data.some((n) => !n.isRead), 'Phải có thông báo chưa đọc trước khi đánh dấu');
+      await req('PUT', '/api/notifications/read-all', { token: userToken });
+      const afterRes = await req('GET', '/api/notifications', { token: userToken });
+      ok(afterRes.data.every((n) => n.isRead === true), 'Tất cả thông báo phải có isRead=true sau khi đọc');
+    });
+
+    await runTest('VI-01', 'Kiểm tra dữ liệu DB/API trả về đầy đủ nhãn tiếng Việt', async () => {
+      const meRes = await req('GET', '/api/auth/me', { token: userToken });
+      eq(meRes.data.roleLabel, 'Người dùng', 'roleLabel tiếng Việt');
+      eq(meRes.data.statusLabel, 'Hoạt động', 'statusLabel tiếng Việt');
+      const bRes = await req('GET', `/api/budgets?month=${currentMonthKey}`, { token: userToken });
+      ok(bRes.data.every((b) => typeof b.statusLabel === 'string' && b.statusLabel.length > 0), 'Ngân sách có statusLabel tiếng Việt');
+      const sRes = await req('GET', '/api/savings', { token: userToken });
+      ok(sRes.data.every((s) => typeof s.statusLabel === 'string' && typeof s.termLabel === 'string'), 'Tiết kiệm có statusLabel & termLabel tiếng Việt');
+      const fRes = await req('GET', `/api/fixed-expenses?month=${currentMonthKey}`, { token: userToken });
+      ok(fRes.data.every((f) => typeof f.statusLabel === 'string' && f.statusLabel.length > 0), 'Chi cố định có statusLabel tiếng Việt');
+
+    });
+
     // ==========================================================
     // MODULE 8: ADMIN & SECURITY
     // ==========================================================
@@ -1019,6 +1044,19 @@ async function req(method, pathUrl, { token, body } = {}) {
         const content = fs.readFileSync(filePath, 'utf-8');
         for (const elId of screenTest.elements) {
           ok(content.includes(`id="${elId}"`), `Thiếu phần tử #${elId} trên màn hình ${screenTest.file}`);
+        }
+      });
+    }
+
+    await runTest('UI-NOTIF-DOT', 'Kiểm tra logic ẩn chấm đỏ thông báo (#notif-dot) sau khi đọc trong main.js', async () => {
+      const mainJs = fs.readFileSync(path.join(feDir, 'js/main.js'), 'utf-8');
+      ok(mainJs.includes('dot.classList.toggle("hidden", unreadTotal === 0)'), 'Chấm đỏ chỉ hiển thị theo unreadTotal');
+      ok(mainJs.includes('dot.classList.add("hidden")'), 'Ẩn chấm đỏ ngay khi bấm mở chuông thông báo');
+      ok(mainJs.includes('saveReadKeys'), 'Lưu trạng thái đã đọc thông báo vào localStorage');
+    });
+    if (false) {
+      await runTest('NONE', '', async () => {
+        for (const x of []) {
         }
       });
     }
