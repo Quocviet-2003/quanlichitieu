@@ -159,33 +159,19 @@
         </div>
       </div>
 
-      <!-- Khu vực biểu đồ: xu hướng chi tiêu + chi tiêu theo danh mục -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Biểu đồ đường -->
-        <div class="card lg:col-span-2 p-5 md:p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-base font-semibold text-slate-900">
-              Tổng quan chi tiêu
-            </h3>
-            <div class="flex items-center gap-2">
-              <input type="date" id="trend-start-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
-              <span class="text-slate-400">-</span>
-              <input type="date" id="trend-end-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
-            </div>
-          </div>
-          <div class="h-64 w-full relative">
-            <canvas id="lineChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Biểu đồ tròn -->
-        <div class="card p-5 md:p-6 flex flex-col">
-          <h3 class="text-base font-semibold text-slate-900 mb-6">
+      <div class="card p-5 md:p-6 mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h3 class="text-base font-semibold text-slate-900">
             Chi tiêu theo danh mục
           </h3>
-          <div class="h-48 w-full relative mb-4 flex-1">
-            <canvas id="donutChart"></canvas>
+          <div class="flex items-center gap-2">
+            <input type="date" id="trend-start-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
+            <span class="text-slate-400">-</span>
+            <input type="date" id="trend-end-date" class="form-input py-1 px-2 text-sm max-w-[130px]" />
           </div>
+        </div>
+        <div class="h-72 w-full relative">
+          <canvas id="donutChart"></canvas>
         </div>
       </div>
 

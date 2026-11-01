@@ -40,19 +40,19 @@ function dateMonthsAgo(monthsBack, day) {
 }
 
 const MONTHLY_EXPENSE_TEMPLATE = [
-  [2, 'Ăn uống', 'Ăn trưa Burger King', 85000],
-  [4, 'Di chuyển', 'Xăng xe', 120000],
-  [6, 'Mua sắm', 'Mua áo mới', 350000],
-  [8, 'Giải trí', 'Xem phim CGV', 180000],
+  [2, 'Ăn uống', 'Ăn trưa cơm văn phòng', 85000],
+  [4, 'Di chuyển', 'Đổ xăng xe máy', 120000],
+  [6, 'Mua sắm', 'Mua áo sơ mi mới', 350000],
+  [8, 'Giải trí', 'Xem phim rạp cuối tuần', 180000],
   [10, 'Ăn uống', 'Đi ăn lẩu với nhóm bạn', 420000],
-  [12, 'Di chuyển', 'Grab đi làm', 96000],
+  [12, 'Di chuyển', 'Đặt xe đi làm', 96000],
   [14, 'Mua sắm', 'Sữa tắm, dầu gội', 210000],
   [16, 'Ăn uống', 'Cà phê cuối tuần', 145000],
-  [18, 'Giải trí', 'Đăng ký gym', 500000],
+  [18, 'Giải trí', 'Đăng ký tập thể hình', 500000],
   [20, 'Ăn uống', 'Đi siêu thị mua đồ ăn', 680000],
-  [23, 'Di chuyển', 'Rửa xe + bảo dưỡng', 150000],
+  [23, 'Di chuyển', 'Rửa xe và bảo dưỡng', 150000],
   [26, 'Khác', 'Quà tặng sinh nhật bạn', 250000],
-  [28, 'Mua sắm', 'Mua sách', 175000],
+  [28, 'Mua sắm', 'Mua sách tham khảo', 175000],
 ];
 
 async function clearDatabase() {
@@ -147,12 +147,11 @@ async function seedData() {
   });
   console.log(`   ✅ Ngân sách mẫu   : 4 danh mục cho tháng ${currentMonth}`);
 
-  // 6. Mục tiêu tiết kiệm
   await prisma.savingsGoal.createMany({
     data: [
       {
         userId: intern.id,
-        name: 'Mua Laptop mới',
+        name: 'Mua máy tính mới',
         targetAmount: 20000000,
         currentAmount: 12000000,
         monthlyContribution: 2000000,
@@ -166,7 +165,7 @@ async function seedData() {
         targetAmount: 15000000,
         currentAmount: 5000000,
         monthlyContribution: 1500000,
-        termType: 'MEDIUM_TERM',
+        termType: 'LONG_TERM',
         status: 'IN_PROGRESS',
       },
       {
@@ -181,15 +180,14 @@ async function seedData() {
       },
     ],
   });
-  console.log('   ✅ Tiết kiệm mẫu   : 3 mục tiêu (Laptop, Quỹ khẩn cấp, Du lịch)');
+  console.log('   ✅ Tiết kiệm mẫu   : 3 mục tiêu (Mua máy tính, Quỹ khẩn cấp, Du lịch)');
 
-  // 7. Chi cố định
   await prisma.fixedExpense.createMany({
     data: [
       {
         userId: intern.id,
         category: 'Khác',
-        description: 'Tiền Internet (FPT Telecom)',
+        description: 'Tiền mạng cáp quang gia đình',
         amount: 250000,
         deductDay: 5,
       },
@@ -204,7 +202,6 @@ async function seedData() {
   });
   console.log('   ✅ Chi cố định     : 2 lịch chi định kỳ hàng tháng');
 
-  // 8. Thông báo
   await prisma.notification.createMany({
     data: [
       {
@@ -223,20 +220,19 @@ async function seedData() {
   });
   console.log('   ✅ Thông báo mẫu   : 2 thông báo');
 
-  // 9. Nhật ký AI mẫu
   await prisma.aiLog.createMany({
     data: [
       {
         userId: intern.id,
-        endpoint: 'ai-insights',
-        model: 'gpt-oss:20b-cloud',
+        endpoint: 'Phân tích chi tiêu',
+        model: 'Trợ lý AI ChiLotus',
         tokens: 320,
         costEstimate: 0.00064,
       },
       {
         userId: intern.id,
-        endpoint: 'ai-chat',
-        model: 'gpt-oss:20b-cloud',
+        endpoint: 'Trò chuyện AI',
+        model: 'Trợ lý AI ChiLotus',
         tokens: 450,
         costEstimate: 0.0009,
       },

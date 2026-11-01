@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const ROOT_DIR = path.join(__dirname, 'quanlichitieu');
 
 const MIME_TYPES = {
@@ -28,19 +28,19 @@ const CATEGORIES = [
 const TRANSACTIONS = [
   { id: 't1', amount: 18000000, type: 'THU', category: 'Lương', description: 'Lương công ty ChiLotus tháng 10', date: '2026-10-05T08:00:00.000Z' },
   { id: 't2', amount: 5000000, type: 'THU', category: 'Khác', description: 'Thưởng dự án hoàn thành sớm', date: '2026-10-08T10:30:00.000Z' },
-  { id: 't3', amount: 3500000, type: 'THU', category: 'Khác', description: 'Thu nhập làm Freelance UI/UX', date: '2026-10-01T15:00:00.000Z' },
+  { id: 't3', amount: 3500000, type: 'THU', category: 'Khác', description: 'Thu nhập làm thiết kế giao diện tự do', date: '2026-10-01T15:00:00.000Z' },
   { id: 't4', amount: 4500000, type: 'CHI', category: 'Khác', description: 'Tiền thuê căn hộ tháng 10', date: '2026-10-06T09:00:00.000Z' },
   { id: 't5', amount: 1650000, type: 'CHI', category: 'Mua sắm', description: 'Bàn phím cơ không dây công thái học', date: '2026-10-03T14:20:00.000Z' },
   { id: 't6', amount: 850000, type: 'CHI', category: 'Ăn uống', description: 'Đi siêu thị thực phẩm tươi sống tuần 2', date: '2026-10-14T11:15:00.000Z' },
-  { id: 't7', amount: 1450000, type: 'CHI', category: 'Mua sắm', description: 'Mua giày chạy bộ Nike Pegasus', date: '2026-10-12T16:45:00.000Z' },
-  { id: 't8', amount: 520000, type: 'CHI', category: 'Ăn uống', description: 'Ăn lẩu Haidilao cuối tuần cùng bạn bè', date: '2026-10-11T19:30:00.000Z' },
-  { id: 't9', amount: 120000, type: 'CHI', category: 'Di chuyển', description: 'Đổ xăng xe máy Shell Ron 95', date: '2026-10-13T08:10:00.000Z' },
-  { id: 't10', amount: 185000, type: 'CHI', category: 'Di chuyển', description: 'GrabCar từ công ty sang văn phòng khách hàng', date: '2026-10-10T14:00:00.000Z' },
-  { id: 't11', amount: 320000, type: 'CHI', category: 'Giải trí', description: 'Vé xem phim CGV IMAX và bắp nước', date: '2026-10-09T20:15:00.000Z' },
-  { id: 't12', amount: 95000, type: 'CHI', category: 'Ăn uống', description: 'Cà phê Highlands gặp đối tác', date: '2026-10-14T09:00:00.000Z' },
-  { id: 't13', amount: 260000, type: 'CHI', category: 'Giải trí', description: 'Đăng ký gói Spotify & Netflix Family', date: '2026-10-07T07:30:00.000Z' },
+  { id: 't7', amount: 1450000, type: 'CHI', category: 'Mua sắm', description: 'Mua giày chạy bộ thể thao', date: '2026-10-12T16:45:00.000Z' },
+  { id: 't8', amount: 520000, type: 'CHI', category: 'Ăn uống', description: 'Ăn lẩu cuối tuần cùng bạn bè', date: '2026-10-11T19:30:00.000Z' },
+  { id: 't9', amount: 120000, type: 'CHI', category: 'Di chuyển', description: 'Đổ xăng xe máy', date: '2026-10-13T08:10:00.000Z' },
+  { id: 't10', amount: 185000, type: 'CHI', category: 'Di chuyển', description: 'Đặt xe từ công ty sang văn phòng khách hàng', date: '2026-10-10T14:00:00.000Z' },
+  { id: 't11', amount: 320000, type: 'CHI', category: 'Giải trí', description: 'Vé xem phim rạp và bắp nước', date: '2026-10-09T20:15:00.000Z' },
+  { id: 't12', amount: 95000, type: 'CHI', category: 'Ăn uống', description: 'Cà phê gặp đối tác', date: '2026-10-14T09:00:00.000Z' },
+  { id: 't13', amount: 260000, type: 'CHI', category: 'Giải trí', description: 'Đăng ký gói nghe nhạc và xem phim trực tuyến', date: '2026-10-07T07:30:00.000Z' },
   { id: 't14', amount: 780000, type: 'CHI', category: 'Khác', description: 'Hóa đơn tiền điện sinh hoạt tháng 9', date: '2026-10-02T10:00:00.000Z' },
-  { id: 't15', amount: 250000, type: 'CHI', category: 'Di chuyển', description: 'Nạp tiền thẻ vé tháng Metro', date: '2026-10-04T08:30:00.000Z' },
+  { id: 't15', amount: 250000, type: 'CHI', category: 'Di chuyển', description: 'Nạp tiền thẻ vé tháng tàu điện', date: '2026-10-04T08:30:00.000Z' },
   { id: 't16', amount: 18000000, type: 'THU', category: 'Lương', description: 'Lương công ty ChiLotus tháng 9', date: '2026-09-05T08:00:00.000Z' },
   { id: 't17', amount: 3800000, type: 'CHI', category: 'Ăn uống', description: 'Tổng chi ăn uống tháng 9', date: '2026-09-28T19:00:00.000Z' },
   { id: 't18', amount: 1900000, type: 'CHI', category: 'Mua sắm', description: 'Quần áo công sở tháng 9', date: '2026-09-20T15:00:00.000Z' },
@@ -56,32 +56,32 @@ const BUDGETS = [
 ];
 
 const SAVINGS = [
-  { id: 's1', name: 'Quỹ khẩn cấp 6 tháng', targetAmount: 40000000, currentAmount: 35000000, deadline: '2026-12-31', monthlyContribution: 3000000, status: 'ACTIVE', percentComplete: 87.5 },
-  { id: 's2', name: 'Mua MacBook Pro M3', targetAmount: 35000000, currentAmount: 28000000, deadline: '2026-11-30', monthlyContribution: 4000000, status: 'ACTIVE', percentComplete: 80 },
-  { id: 's3', name: 'Du lịch Nhật Bản mùa xuân', targetAmount: 25000000, currentAmount: 12500000, deadline: '2027-04-15', monthlyContribution: 2000000, status: 'ACTIVE', percentComplete: 50 },
-  { id: 's4', name: 'Mua xe máy Honda Vario', targetAmount: 30000000, currentAmount: 30000000, deadline: '2026-09-01', monthlyContribution: 5000000, status: 'COMPLETED', percentComplete: 100 }
+  { id: 's1', name: 'Quỹ khẩn cấp 6 tháng', targetAmount: 40000000, currentAmount: 35000000, deadline: '2026-12-31', monthlyContribution: 3000000, status: 'IN_PROGRESS', statusLabel: 'Đang thực hiện', termType: 'SHORT_TERM', termLabel: 'Ngắn hạn', percentComplete: 87.5 },
+  { id: 's2', name: 'Mua máy tính xách tay mới', targetAmount: 35000000, currentAmount: 28000000, deadline: '2026-11-30', monthlyContribution: 4000000, status: 'IN_PROGRESS', statusLabel: 'Đang thực hiện', termType: 'SHORT_TERM', termLabel: 'Ngắn hạn', percentComplete: 80 },
+  { id: 's3', name: 'Du lịch Nhật Bản mùa xuân', targetAmount: 25000000, currentAmount: 12500000, deadline: '2027-04-15', monthlyContribution: 2000000, status: 'IN_PROGRESS', statusLabel: 'Đang thực hiện', termType: 'LONG_TERM', termLabel: 'Dài hạn', percentComplete: 50 },
+  { id: 's4', name: 'Mua xe máy mới', targetAmount: 30000000, currentAmount: 30000000, deadline: '2026-09-01', monthlyContribution: 5000000, status: 'COMPLETED', statusLabel: 'Đã hoàn thành', termType: 'SHORT_TERM', termLabel: 'Ngắn hạn', percentComplete: 100 }
 ];
 
 const FIXED_EXPENSES = [
-  { id: 'f1', category: 'Khác', description: 'Tiền thuê căn hộ', amount: 4500000, deductDay: 5, lastDeducted: '2026-10-05' },
-  { id: 'f2', category: 'Khác', description: 'Điện nước sinh hoạt', amount: 850000, deductDay: 10, lastDeducted: '2026-10-10' },
-  { id: 'f3', category: 'Khác', description: 'Internet cáp quang Viettel', amount: 250000, deductDay: 15, lastDeducted: '2026-09-15' },
-  { id: 'f4', category: 'Giải trí', description: 'Gói gia đình Spotify & Netflix', amount: 260000, deductDay: 20, lastDeducted: '2026-09-20' },
-  { id: 'f5', category: 'Khác', description: 'Gói tập Gym California 12 tháng', amount: 650000, deductDay: 25, lastDeducted: '2026-09-25' }
+  { id: 'f1', category: 'Khác', description: 'Tiền thuê căn hộ', amount: 4500000, deductDay: 5, lastDeducted: '2026-10-05', status: 'DEDUCTED', statusLabel: 'Đã trừ' },
+  { id: 'f2', category: 'Khác', description: 'Điện nước sinh hoạt', amount: 850000, deductDay: 10, lastDeducted: '2026-10-10', status: 'DEDUCTED', statusLabel: 'Đã trừ' },
+  { id: 'f3', category: 'Khác', description: 'Mạng cáp quang gia đình', amount: 250000, deductDay: 15, lastDeducted: '2026-09-15', status: 'UPCOMING', statusLabel: 'Chưa đến hạn' },
+  { id: 'f4', category: 'Giải trí', description: 'Gói giải trí trực tuyến gia đình', amount: 260000, deductDay: 20, lastDeducted: '2026-09-20', status: 'UPCOMING', statusLabel: 'Chưa đến hạn' },
+  { id: 'f5', category: 'Khác', description: 'Gói tập thể hình 12 tháng', amount: 650000, deductDay: 25, lastDeducted: '2026-09-25', status: 'UPCOMING', statusLabel: 'Chưa đến hạn' }
 ];
 
 const NOTIFICATIONS = [
   { id: 'n1', title: 'Khấu trừ chi phí cố định', message: 'Đã tự động trừ 4.500.000₫ cho Tiền thuê căn hộ ngày 05/10', isRead: false, createdAt: '2026-10-05T08:00:00Z' },
   { id: 'n2', title: 'Cảnh báo ngân sách', message: 'Danh mục Mua sắm đã vượt hạn mức 12% trong tháng này', isRead: false, createdAt: '2026-10-12T14:30:00Z' },
-  { id: 'n3', title: 'Mục tiêu tiết kiệm', message: 'Chúc mừng! Bạn đã hoàn thành 100% mục tiêu Mua xe máy Honda Vario', isRead: true, createdAt: '2026-10-01T09:15:00Z' }
+  { id: 'n3', title: 'Mục tiêu tiết kiệm', message: 'Chúc mừng! Bạn đã hoàn thành 100% mục tiêu Mua xe máy mới', isRead: true, createdAt: '2026-10-01T09:15:00Z' }
 ];
 
 const USERS = [
-  { id: 'u_demo', name: 'Đặng Quốc Việt', email: 'intern@chilotus.com', role: 'USER', status: 'ACTIVE', counts: { transactions: 35, budgets: 4, savingsGoals: 4 } },
-  { id: 'u2', name: 'Nguyễn Văn An', email: 'an.nguyen@gmail.com', role: 'USER', status: 'ACTIVE', counts: { transactions: 18, budgets: 2, savingsGoals: 1 } },
-  { id: 'u3', name: 'Trần Thị Mai', email: 'mai.tran@gmail.com', role: 'USER', status: 'ACTIVE', counts: { transactions: 24, budgets: 3, savingsGoals: 2 } },
-  { id: 'u4', name: 'Lê Hoàng Long', email: 'long.le@gmail.com', role: 'USER', status: 'BLOCKED', counts: { transactions: 5, budgets: 1, savingsGoals: 0 } },
-  { id: 'u_admin', name: 'Admin ChiLotus', email: 'admin@chilotus.com', role: 'ADMIN', status: 'ACTIVE', counts: { transactions: 0, budgets: 0, savingsGoals: 0 } }
+  { id: 'u_demo', name: 'Đặng Quốc Việt', email: 'intern@chilotus.com', role: 'USER', roleLabel: 'Người dùng', status: 'ACTIVE', statusLabel: 'Hoạt động', counts: { transactions: 35, budgets: 4, savingsGoals: 4 } },
+  { id: 'u2', name: 'Nguyễn Văn An', email: 'an.nguyen@gmail.com', role: 'USER', roleLabel: 'Người dùng', status: 'ACTIVE', statusLabel: 'Hoạt động', counts: { transactions: 18, budgets: 2, savingsGoals: 1 } },
+  { id: 'u3', name: 'Trần Thị Mai', email: 'mai.tran@gmail.com', role: 'USER', roleLabel: 'Người dùng', status: 'ACTIVE', statusLabel: 'Hoạt động', counts: { transactions: 24, budgets: 3, savingsGoals: 2 } },
+  { id: 'u4', name: 'Lê Hoàng Long', email: 'long.le@gmail.com', role: 'USER', roleLabel: 'Người dùng', status: 'BLOCKED', statusLabel: 'Bị khóa', counts: { transactions: 5, budgets: 1, savingsGoals: 0 } },
+  { id: 'u_admin', name: 'Quản trị viên ChiLotus', email: 'admin@chilotus.com', role: 'ADMIN', roleLabel: 'Quản trị viên', status: 'ACTIVE', statusLabel: 'Hoạt động', counts: { transactions: 0, budgets: 0, savingsGoals: 0 } }
 ];
 
 function sendJson(res, data, statusCode = 200) {
@@ -262,6 +262,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/notifications/read-all' || pathname.startsWith('/api/notifications/')) {
+    NOTIFICATIONS.forEach((n) => { n.isRead = true; });
     return sendJson(res, { message: 'Đã đánh dấu đã đọc' });
   }
 
@@ -291,8 +292,8 @@ const server = http.createServer(async (req, res) => {
           { user: { id: 'u3', name: 'Trần Thị Mai', email: 'mai.tran@gmail.com' }, requests: 28 }
         ],
         recentLogs: [
-          { id: 'l1', endpoint: 'ai-insights', model: 'llama3:8b', tokens: 280, createdAt: '2026-10-14T10:30:00Z', user: { name: 'Đặng Quốc Việt', email: 'intern@chilotus.com' } },
-          { id: 'l2', endpoint: 'ai-chat', model: 'llama3:8b', tokens: 195, createdAt: '2026-10-14T09:15:00Z', user: { name: 'Đặng Quốc Việt', email: 'intern@chilotus.com' } }
+          { id: 'l1', endpoint: 'Phân tích chi tiêu', model: 'Trợ lý AI ChiLotus', tokens: 280, createdAt: '2026-10-14T10:30:00Z', user: { name: 'Đặng Quốc Việt', email: 'intern@chilotus.com' } },
+          { id: 'l2', endpoint: 'Trò chuyện AI', model: 'Trợ lý AI ChiLotus', tokens: 195, createdAt: '2026-10-14T09:15:00Z', user: { name: 'Đặng Quốc Việt', email: 'intern@chilotus.com' } }
         ]
       }
     });
@@ -303,7 +304,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/admin/ai-settings') {
-    return sendJson(res, { model: 'llama3:8b', dailyQuota: 50 });
+    return sendJson(res, { model: 'Trợ lý AI ChiLotus', dailyQuota: 50 });
   }
 
   if (pathname === '/api/ai-insights' || pathname === '/api/ai/insight') {
@@ -386,14 +387,14 @@ const server = http.createServer(async (req, res) => {
 
   if (!filePath.startsWith(ROOT_DIR)) {
     res.writeHead(403);
-    res.end('Forbidden');
+    res.end('Truy cập không hợp lệ');
     return;
   }
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('File not found: ' + urlPath);
+      res.end('Không tìm thấy tệp: ' + urlPath);
       return;
     }
     const ext = path.extname(filePath);
@@ -403,5 +404,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Mock server running at http://localhost:${PORT}`);
+  console.log(`Máy chủ đang chạy tại http://localhost:${PORT}`);
 });
