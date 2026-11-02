@@ -2,6 +2,8 @@ import os
 import time
 from playwright.sync_api import sync_playwright
 
+BASE_URL = os.environ.get("CHILOTUS_BASE_URL", "http://localhost:3000").rstrip("/")
+
 OUTPUT_DIR = os.path.abspath("screenshots")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -12,36 +14,48 @@ USER_DATA = {
 
 ADMIN_DATA = {
     "token": "mock-admin-token",
-    "user": '{"id":"u_admin","name":"Admin ChiLotus","email":"admin@chilotus.com","role":"ADMIN","bio":"Quản trị viên hệ thống ChiLotus"}'
+    "user": '{"id":"u_admin","name":"Quản trị viên ChiLotus","email":"admin@chilotus.com","role":"ADMIN","bio":"Quản trị viên hệ thống ChiLotus"}'
 }
 
+def auth_script(auth):
+    """Doan JS duoc chay truoc moi script cua trang de dat san thong tin dang nhap."""
+    return (
+        "localStorage.setItem('token', '%s');"
+        "localStorage.setItem('user', '%s');" % (auth["token"], auth["user"])
+    )
+
+
 def set_auth(page, auth):
-    page.evaluate(f"""() => {{
-        localStorage.setItem('token', '{auth["token"]}');
-        localStorage.setItem('user', '{auth["user"]}');
-    }}""")
+    page.evaluate("() => { %s }" % auth_script(auth))
+
+
+def open_page(page, url, wait=1500):
+    """Mo mot trang can dang nhap (localStorage da duoc dat san qua init script)."""
+    page.goto(url)
+    page.wait_for_timeout(wait)
+
 
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
+
+        # 1-2. Trang dang nhap / dang ky: context rieng, chua dang nhap
+        guest = browser.new_context(viewport={"width": 1440, "height": 900})
+        gpage = guest.new_page()
+        print("1. Capturing login.html...")
+        gpage.goto(BASE_URL + "/login.html")
+        gpage.wait_for_timeout(1000)
+        gpage.screenshot(path=os.path.join(OUTPUT_DIR, "01_dang_nhap.png"), full_page=True)
+        print("2. Capturing register.html...")
+        gpage.goto(BASE_URL + "/register.html")
+        gpage.wait_for_timeout(1000)
+        gpage.screenshot(path=os.path.join(OUTPUT_DIR, "02_dang_ky.png"), full_page=True)
+        guest.close()
         context = browser.new_context(viewport={"width": 1440, "height": 900})
+        context.add_init_script(auth_script(USER_DATA))
         page = context.new_page()
 
-        print("1. Capturing login.html...")
-        page.goto("http://localhost:3000/login.html")
-        page.wait_for_timeout(1000)
-        page.screenshot(path=os.path.join(OUTPUT_DIR, "01_dang_nhap.png"), full_page=True)
-
-        print("2. Capturing register.html...")
-        page.goto("http://localhost:3000/register.html")
-        page.wait_for_timeout(1000)
-        page.screenshot(path=os.path.join(OUTPUT_DIR, "02_dang_ky.png"), full_page=True)
-
-        # Setup user auth
-        page.goto("http://localhost:3000/index.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(2000)
+        open_page(page, BASE_URL + "/index.html", 2000)
 
         print("3. Capturing index.html (Dashboard)...")
         page.screenshot(path=os.path.join(OUTPUT_DIR, "03_tong_quan_dashboard.png"), full_page=True)
@@ -81,52 +95,31 @@ def main():
                 page.wait_for_timeout(300)
 
         print("7. Capturing transactions.html...")
-        page.goto("http://localhost:3000/transactions.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/transactions.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "07_lich_su_giao_dich.png"), full_page=True)
 
         print("8. Capturing income.html...")
-        page.goto("http://localhost:3000/income.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/income.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "08_khoan_thu.png"), full_page=True)
 
         print("9. Capturing expense.html...")
-        page.goto("http://localhost:3000/expense.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/expense.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "09_khoan_chi.png"), full_page=True)
 
         print("10. Capturing budget.html...")
-        page.goto("http://localhost:3000/budget.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/budget.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "10_quan_ly_ngan_sach.png"), full_page=True)
 
         print("11. Capturing savings.html...")
-        page.goto("http://localhost:3000/savings.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/savings.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "11_muc_tieu_tiet_kiem.png"), full_page=True)
 
         print("12. Capturing fixed-expenses.html...")
-        page.goto("http://localhost:3000/fixed-expenses.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/fixed-expenses.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "12_chi_phi_co_dinh.png"), full_page=True)
 
         print("13. Capturing reports.html...")
-        page.goto("http://localhost:3000/reports.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(2000)
+        open_page(page, BASE_URL + "/reports.html", 2000)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "13_bao_cao_thong_ke.png"), full_page=True)
 
         print("14. Capturing AI insight on reports.html...")
@@ -137,27 +130,23 @@ def main():
             page.screenshot(path=os.path.join(OUTPUT_DIR, "14_nhan_xet_ai_bao_cao.png"), full_page=True)
 
         print("15. Capturing search.html...")
-        page.goto("http://localhost:3000/search.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/search.html", 1500)
         page.fill("#search-input", "lương")
         page.wait_for_timeout(800)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "15_tim_kiem_giao_dich.png"), full_page=True)
 
         print("16. Capturing settings.html...")
-        page.goto("http://localhost:3000/settings.html")
-        set_auth(page, USER_DATA)
-        page.reload()
-        page.wait_for_timeout(1500)
+        open_page(page, BASE_URL + "/settings.html", 1500)
         page.screenshot(path=os.path.join(OUTPUT_DIR, "16_cai_dat_tai_khoan.png"), full_page=True)
 
         print("17. Capturing admin.html...")
-        set_auth(page, ADMIN_DATA)
-        page.wait_for_timeout(300)
-        page.goto("http://localhost:3000/admin.html")
-        page.wait_for_timeout(2000)
-        page.screenshot(path=os.path.join(OUTPUT_DIR, "17_quan_tri_admin.png"), full_page=True)
+        admin_ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        admin_ctx.add_init_script(auth_script(ADMIN_DATA))
+        apage = admin_ctx.new_page()
+        apage.goto(BASE_URL + "/admin.html")
+        apage.wait_for_timeout(2000)
+        apage.screenshot(path=os.path.join(OUTPUT_DIR, "17_quan_tri_admin.png"), full_page=True)
+        admin_ctx.close()
 
         browser.close()
         print("All screenshots taken successfully!")
