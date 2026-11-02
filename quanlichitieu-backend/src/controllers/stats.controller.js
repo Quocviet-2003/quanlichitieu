@@ -10,7 +10,7 @@ const { asyncHandler, assert, monthRange, currentMonth, monthKey, dayKeyOf } = r
 
 // [Dashboard] Router gọi hàm này để tính dữ liệu cho các thẻ tổng quan.
 exports.getSummary = asyncHandler(async (req, res) => {
-  let start, end; // Hai mốc lọc: start <= ngày giao dịch < end.
+  let start, end;
   const queryMonth = req.query.month; // Lấy tháng từ URL, ví dụ ?month=2026-10.
   const queryDate = req.query.date; // Lấy ngày từ URL, ví dụ ?date=2026-10-15.
   // Nếu có tháng, lấy khoảng thời gian của tháng đó
@@ -20,9 +20,9 @@ exports.getSummary = asyncHandler(async (req, res) => {
     end = range.end;
   } else if (queryDate) { // Không có month thì xét ngày được chọn.
     const d = new Date(`${queryDate}T00:00:00.000Z`);
-    start = new Date(d); // Tạo mốc đầu ngày riêng.
-    end = new Date(d); // 
-    end.setUTCDate(end.getUTCDate() + 1); // Tăng end lên đầu ngày hôm sau.
+    start = new Date(d);
+    end = new Date(d);
+    end.setUTCDate(end.getUTCDate() + 1);
   } else { // Không gửi tháng/ngày thì mặc định tháng hiện tại.
     const range = monthRange(currentMonth());
     start = range.start;
@@ -37,11 +37,11 @@ exports.getSummary = asyncHandler(async (req, res) => {
     periodExpenseAgg,
     txCount
   ] = await Promise.all([
-    prisma.transaction.aggregate({ // 1. Tính tổng THU, không lọc ngày.
+    prisma.transaction.aggregate({ // 1. Tính tổng THU
       _sum: { amount: true },
       where: { userId: req.userId, type: 'THU' }
     }),
-    prisma.transaction.aggregate({ // 2. Tính tổng CHI, không lọc ngày.
+    prisma.transaction.aggregate({ // 2. Tính tổng CHI
       _sum: { amount: true },
       where: { userId: req.userId, type: 'CHI' }
     }),
@@ -69,19 +69,33 @@ exports.getSummary = asyncHandler(async (req, res) => {
     }),
   ]);
 
-  const totalIncome = incomeAgg._sum.amount || 0; // Tổng thu toàn lịch sử; chưa có thì lấy 0.
-  const totalExpense = expenseAgg._sum.amount || 0; // Tổng chi toàn lịch sử.
-  const periodIncome = periodIncomeAgg._sum.amount || 0; // Thu trong tháng/ngày đang xem.
-  const periodExpense = periodExpenseAgg._sum.amount || 0; // Chi trong tháng/ngày đang xem.
-  const monthSurplus = Math.max(0, periodIncome - periodExpense); // Dư kỳ = thu - chi, thấp nhất là 0.
+  // ============================================================
+  // B3. BACKEND TÍNH THU, CHI, SỐ DƯ VÀ TIỀN DƯ
+  // ============================================================
+
+  // Giải thích: Tổng thu của toàn bộ lịch sử; chưa có giao dịch thì lấy 0.
+  const totalIncome = incomeAgg._sum.amount || 0;
+
+  // Giải thích: Tổng chi của toàn bộ lịch sử.
+  const totalExpense = expenseAgg._sum.amount || 0;
+
+  // Giải thích: Tổng thu trong tháng hoặc ngày người dùng đang xem.
+  const periodIncome = periodIncomeAgg._sum.amount || 0;
+
+  // Giải thích: Tổng chi trong cùng khoảng thời gian đang xem.
+  const periodExpense = periodExpenseAgg._sum.amount || 0;
+
+
+  //  TINH SO DƯ Nếu chi lớn hơn thu thì Math.max trả về 0, không trả số âm.
+  const monthSurplus = Math.max(0, periodIncome - periodExpense);
   //Lọc những mục tiêu tiết kiệm có liên quan đến tháng đang xem
   let periodSavingsGoals = savingsGoals;
-  if (queryMonth) { // Chỉ lọc mục tiêu khi có tháng
+  if (queryMonth) { // CHỌN THÁNG THÌ LỌC MỤC TIÊU
     periodSavingsGoals = savingsGoals.filter((g) => {
-      // Nếu mục tiêu được tạo từ đầu tháng sau trở đi thì bỏ.
+      // Loại mục tiêu được tạo sau tháng đang xem
       const created = new Date(g.createdAt);
       if (created >= end) return false;
-      // Nếu mục tiêu có hạn hoàn thành và hạn đó trước đầu tháng đang xem thì bỏ.
+      // Loại mục tiêu đã hết hạn trước tháng đang xem
       if (g.deadline) {
         const dl = new Date(g.deadline);
         if (dl < start) return false;
@@ -89,19 +103,21 @@ exports.getSummary = asyncHandler(async (req, res) => {
       return true; // Giữ mục tiêu vượt qua các điều kiện trên.
     });
   }
-  //Duyệt các mục tiêu sau khi lọc và cộng số tiền hiện có
+  //Cộng tiền của các mục tiêu sau khi lọc
   const periodSavings = periodSavingsGoals.reduce(
     (sum, g) => sum + (g.currentAmount || 0),
     0 // Tổng ban đầu là 0; chưa có mục tiêu thì kết quả là 0.
   );
-  //cộng trên toàn bộ danh sách mục tiêu, chưa lọc tháng.
+  //Tính tổng tiết kiệm toàn bộ
   const totalSavings = savingsGoals.reduce(
     (sum, g) => sum + (g.currentAmount || 0),
     0 // Bắt đầu cộng từ 0.
   );
 
-  res.json({ // Gửi object số liệu về frontend để cập nhật dashboard.
-    balance: totalIncome - totalExpense, // Số dư toàn lịch sử
+  // Giải thích: Gửi object số liệu về frontend để cập nhật Dashboard.
+  res.json({
+    // Giải thích: Số dư thật của tài khoản = tổng thu - tổng chi toàn lịch sử.
+    balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
     totalSavings: queryMonth ? periodSavings : totalSavings, //Có month thì dùng tiền mục tiêu sau lọc; không có thì dùng toàn bộ

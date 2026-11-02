@@ -15,14 +15,14 @@ const {
   isValidObjectId,
   monthRange,
 } = require("../utils/helpers");
-
+// TÍNH % HOÀN THÀNH CỦA MỤC TIÊU
 function withPercent(goal) {
   const percentComplete =
     goal.targetAmount > 0
       ? Math.min(
-          100,
-          Math.round((goal.currentAmount / goal.targetAmount) * 100),
-        )
+        100,
+        Math.round((goal.currentAmount / goal.targetAmount) * 100),
+      )
       : 0;
   const statusLabel =
     goal.status === "COMPLETED" ? "Đã hoàn thành" : "Đang thực hiện";
@@ -32,6 +32,7 @@ function withPercent(goal) {
 }
 
 exports.getSavingsGoals = asyncHandler(async (req, res) => {
+  //chỉ lấy mục tiêu thuộc người đang đăng nhập
   const where = { userId: req.userId };
   if (req.query.termType) {
     where.termType = req.query.termType;
@@ -184,26 +185,45 @@ exports.updateSavingsGoal = asyncHandler(async (req, res) => {
 
 // [Dashboard] POST /api/savings/:id/deposit nhận tiền phân bổ từ popup số dư.
 exports.depositToGoal = asyncHandler(async (req, res) => {
-  // Kiểm tra số tiền dương và mục tiêu thuộc tài khoản đang đăng nhập.
+  // ============================================================
+  // B9. BACKEND KIỂM TRA VÀ CẬP NHẬT DATABASE
+  // ============================================================
+
+  // Giải thích: Body bắt buộc phải có trường amount.
   requireFields(req.body, ["amount"]);
+
+  // Giải thích: Chuyển amount nhận từ JSON sang kiểu Number.
   const amount = toNumber(req.body.amount);
+
+  // Giải thích: Chặn dữ liệu không phải số, số 0 và số âm.
   assert(
     Number.isFinite(amount) && amount > 0,
     400,
     "Số tiền đóng góp phải là số lớn hơn 0.",
   );
+
+  // Giải thích: Lấy ID mục tiêu từ URL /api/savings/:id/deposit.
   const depositId = req.params.id;
+
+  // Giải thích: Chỉ tìm mục tiêu có ID đúng và thuộc người đang đăng nhập.
+  // Điều này ngăn người dùng chuyển tiền vào mục tiêu của tài khoản khác.
   const existing = isValidObjectId(depositId)
     ? await prisma.savingsGoal.findFirst({
-        where: { id: depositId, userId: req.userId },
-      })
+      where: { id: depositId, userId: req.userId },
+    })
     : null;
+
+  // Giải thích: Không tìm thấy mục tiêu hợp lệ thì trả lỗi 404.
   assert(existing, 404, "Không tìm thấy mục tiêu tiết kiệm.");
 
+  // Giải thích: Số còn thiếu = số tiền mục tiêu - số đã tích luỹ.
   const remainingNeeded = Math.max(0, existing.targetAmount - existing.currentAmount);
+
+  // Giải thích: Không cho đóng góp vượt số tiền mục tiêu còn thiếu.
   assert(amount <= remainingNeeded, 400, "Số tiền đóng góp vượt quá số tiền còn thiếu của mục tiêu.");
 
-  // Kiểm tra số dư toàn bộ tài khoản: tổng thu trừ tổng chi.
+  // Giải thích: Backend tính lại tổng THU và tổng CHI của tài khoản.
+  // Hai truy vấn được chạy đồng thời bằng Promise.all.
   const [incAgg, expAgg] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
@@ -214,40 +234,66 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
       where: { userId: req.userId, type: "CHI" },
     }),
   ]);
+
+  // Giải thích: Số dư thật = tổng THU toàn lịch sử - tổng CHI toàn lịch sử.
   const currentBalance = (incAgg._sum.amount || 0) - (expAgg._sum.amount || 0);
+
+  // Giải thích: Backend vẫn kiểm tra lại dù frontend đã kiểm tra trước đó.
+  // Việc này ngăn request giả mạo hoặc dữ liệu frontend đã cũ.
   assert(amount <= currentBalance, 400, "Số dư tài khoản không đủ để đóng góp.");
 
-  // Cộng tiền vào mục tiêu; đủ số tiền yêu cầu thì đánh dấu hoàn thành.
+  // Giải thích: Cộng amount vào currentAmount hiện có của mục tiêu.
   let goal = await prisma.savingsGoal.update({
+    // Giải thích: Chọn đúng mục tiêu cần cập nhật.
     where: { id: existing.id },
+
+    // Giải thích: increment cộng trực tiếp amount vào currentAmount.
     data: { currentAmount: { increment: amount } },
   });
 
+  // Giải thích: Nếu tiền hiện có đã đạt targetAmount thì tự hoàn thành mục tiêu.
   if (goal.status !== "COMPLETED" && goal.currentAmount >= goal.targetAmount) {
     goal = await prisma.savingsGoal.update({
       where: { id: goal.id },
+
+      // Giải thích: Chuyển trạng thái từ IN_PROGRESS sang COMPLETED.
       data: { status: "COMPLETED" },
     });
   }
 
-  // Dashboard gửi ngày thuộc tháng đang xem; thiếu ngày thì dùng hiện tại.
+  // Giải thích: Dashboard gửi ngày thuộc tháng đang xem.
+  // Nếu frontend không gửi date thì sử dụng thời điểm hiện tại.
   const txDate = req.body.date ? new Date(req.body.date) : new Date();
 
-  // Ghi thêm giao dịch CHI, danh mục Khác, mô tả Tiết kiệm để trừ số dư khả dụng.
+  // Giải thích: Tạo giao dịch CHI để số dư khả dụng trên Dashboard giảm
+  // đúng bằng số tiền vừa được cộng vào mục tiêu tiết kiệm.
   await prisma.transaction.create({
     data: {
+      // Giải thích: Giao dịch thuộc người đang đăng nhập.
       userId: req.userId,
+
+      // Giải thích: Số tiền CHI đúng bằng số tiền vừa chuyển.
       amount,
+
+      // Giải thích: Loại CHI làm công thức balance = tổng THU - tổng CHI giảm xuống.
       type: "CHI",
+
+      // Giải thích: Phiên bản hiện tại xếp khoản tiết kiệm vào danh mục Khác.
       category: "Khác",
+
+      // Giải thích: Nội dung giúp nhận biết giao dịch phát sinh từ mục tiêu nào.
       description: `Tiết kiệm: ${goal.name}`,
+
+      // Giải thích: Nếu ngày gửi lên không hợp lệ thì dùng ngày hiện tại.
       date: isNaN(txDate.getTime()) ? new Date() : txDate,
     },
   });
 
+  // Giải thích: Trả kết quả về frontend sau khi cập nhật thành công.
   res.json({
     message: `Đã đóng góp thành công vào mục tiêu "${goal.name}".`,
-    // cập nhật status và tính phần trăm.
+
+    // Giải thích: withPercent bổ sung phần trăm hoàn thành vào mục tiêu trả về.
     goal: withPercent(goal),
   });
 });

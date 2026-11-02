@@ -225,12 +225,22 @@ async function apiUpdateSavingsGoal(id, goalData) {
   });
 }
 
-// [Dashboard] Gửi số tiền phân bổ và ngày chuyển vào một mục tiêu tiết kiệm.
+// ============================================================
+// B8. FRONTEND ĐÓNG GÓI VÀ GỬI REQUEST ĐÓNG GÓP
+// ============================================================
 async function apiDepositToGoal(id, amount, date = null) {
+  // Giải thích: Body tối thiểu luôn có số tiền muốn chuyển.
   const body = { amount };
+
+  // Giải thích: Nếu Dashboard có ngày của tháng đang xem thì gửi kèm.
+  // Nếu không có date, backend sẽ sử dụng thời điểm hiện tại.
   if (date) body.date = date;
+
+  // Giải thích: id được đặt trong URL để backend biết mục tiêu nhận tiền.
   return apiFetch(`/api/savings/${id}/deposit`, {
     method: 'POST',
+
+    // Giải thích: Chuyển object body thành chuỗi JSON trước khi gửi.
     body: JSON.stringify(body)
   });
 }
@@ -245,18 +255,24 @@ async function apiGetCategories() {
 
 // [Dashboard] Lấy số liệu cho các thẻ thu nhập, chi tiêu, tiết kiệm và banner số dư.
 async function apiGetStatsSummary(options = null) {
+  // Giải thích: query sẽ chứa phần lọc theo tháng hoặc ngày của URL.
   let query = '';
-  // Chuỗi YYYY-MM lọc theo tháng; YYYY-MM-DD lọc theo ngày.
+
+  // Giải thích: Chuỗi YYYY-MM lọc theo tháng; YYYY-MM-DD lọc theo ngày.
   if (typeof options === 'string') {
     if (options.length === 7) {
+      // Giải thích: Ví dụ options = "2026-10" tạo ra ?month=2026-10.
       query = `?month=${encodeURIComponent(options)}`;
     } else {
+      // Giải thích: Chuỗi dài hơn được hiểu là một ngày cụ thể.
       query = `?date=${encodeURIComponent(options)}`;
     }
   } else if (options && typeof options === 'object') {
     if (options.month) query = `?month=${encodeURIComponent(options.month)}`;
     else if (options.date) query = `?date=${encodeURIComponent(options.date)}`;
   }
+
+  // Giải thích: Gửi GET /api/stats/summary kèm query vừa tạo.
   return apiFetch(`/api/stats/summary${query}`);
 }
 
@@ -281,8 +297,6 @@ async function apiGetDailyTrend(days = 30, startDate = null, endDate = null) {
   if (startDate && endDate) {
     return apiFetch(`/api/stats/trend?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
   }
-  // Nhánh dự phòng: cần thực sự gọi hàm khi thiếu ngày mới gửi days xuống backend.
-  // Tổng quan hiện không gọi lại hàm khi người dùng xóa các ô ngày.
   return apiFetch(`/api/stats/trend?days=${days}`);
 }
 

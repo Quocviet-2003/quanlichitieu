@@ -30,7 +30,7 @@ exports.getBudgets = asyncHandler(async (req, res) => {
     start = range.start;
     end = range.end;
   }
-  // lấy đúng ngân sách tháng đưuọc chọn
+  // Bước 2: Lấy các hạn mức của tháng
   const budgets = await prisma.budget.findMany({
     where: { userId: req.userId, month },
     orderBy: { category: 'asc' },

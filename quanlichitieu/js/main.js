@@ -121,131 +121,36 @@ document.addEventListener("layoutLoaded", () => {
     let totalIncome = 0;
     let totalExpense = 0;
     const categoryTotals = {};
-
+    // duyệt từng giao dịch để tính toán
     transactions.forEach((tx) => {
+      // nếu là gd thu + tổng thu
       if (tx.type === "THU") {
         totalIncome += tx.amount;
       } else {
+        // nếu là gd chi + tổng chi và thêm vào danh mục 
         totalExpense += tx.amount;
         const cat = tx.category || "Khác";
         categoryTotals[cat] = (categoryTotals[cat] || 0) + tx.amount;
       }
     });
-
+    // số dư = tổng thu- tổng chi
     const netBalance = totalIncome - totalExpense;
+    // tính chi tiêu theo danh mục
     const categoryLines =
       Object.entries(categoryTotals)
         .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
         .join("\n") || "- (không có khoản chi nào)";
-
+    // tạo chuỗi summary
     let text =
       `Tổng thu nhập: ${formatCurrency(totalIncome)}\n` +
       `Tổng chi tiêu: ${formatCurrency(totalExpense)}\n` +
       `Số dư: ${formatCurrency(netBalance)}\n` +
       `Chi tiêu theo danh mục:\n${categoryLines}`;
-
+    // thêm 15 giao dịch gần nhất vào summary
     if (transactions.length > 0) {
       text += `\nDanh sách giao dịch:\n`;
       transactions.slice(-15).forEach((tx) => {
         const d = tx.date ? tx.date.slice(0, 10) : "";
-        text += `- ${d} | ${tx.type === "THU" ? "Thu" : "Chi"} | ${tx.category}: ${formatCurrency(tx.amount)}${tx.description ? ` (${tx.description})` : ""}\n`;
-      });
-    }
-
-    return text.trim();
-  };
-
-  // Dữ liệu tài chính dành riêng cho Chatbot AI: tổng hợp chi tiết theo từng tháng
-  // giúp AI trả lời chính xác các câu hỏi như "tháng mấy thu chi bao nhiêu", "tháng 9 thế nào"...
-  const buildChatFinanceSummaryText = (transactions = []) => {
-    if (!transactions || transactions.length === 0) {
-      return "Người dùng chưa có dữ liệu giao dịch.";
-    }
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-    const categoryTotals = {};
-    const monthlyStats = {};
-
-    transactions.forEach((tx) => {
-      const amount = Number(tx.amount) || 0;
-      let monthStr = "";
-      if (tx.date) {
-        monthStr = String(tx.date).slice(0, 7); // 'YYYY-MM'
-      }
-      if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
-        const d = new Date(tx.date || Date.now());
-        if (!isNaN(d.getTime())) {
-          monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        } else {
-          monthStr = "Chưa rõ";
-        }
-      }
-
-      if (!monthlyStats[monthStr]) {
-        monthlyStats[monthStr] = {
-          thu: 0,
-          chi: 0,
-          categories: {},
-          txCount: 0,
-        };
-      }
-
-      monthlyStats[monthStr].txCount += 1;
-
-      if (tx.type === "THU") {
-        totalIncome += amount;
-        monthlyStats[monthStr].thu += amount;
-      } else {
-        totalExpense += amount;
-        monthlyStats[monthStr].chi += amount;
-        const cat = tx.category || "Khác";
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + amount;
-        monthlyStats[monthStr].categories[cat] =
-          (monthlyStats[monthStr].categories[cat] || 0) + amount;
-      }
-    });
-
-    const netBalance = totalIncome - totalExpense;
-
-    // Sắp xếp các tháng giảm dần (mới nhất đến cũ nhất)
-    const sortedMonths = Object.keys(monthlyStats).sort((a, b) => b.localeCompare(a));
-
-    const monthlyLines = sortedMonths.map((m) => {
-      const st = monthlyStats[m];
-      const surplus = st.thu - st.chi;
-      const [year, month] = m.split("-");
-      const monthLabel = year && month ? `Tháng ${parseInt(month, 10)}/${year} (${m})` : m;
-
-      // Tìm danh mục chi tiêu lớn nhất trong tháng nếu có
-      const topExpenseCat = Object.entries(st.categories)
-        .sort((a, b) => b[1] - a[1])[0];
-      const topCatText = topExpenseCat
-        ? ` | Chi nhiều nhất: ${topExpenseCat[0]} (${formatCurrency(topExpenseCat[1])})`
-        : "";
-
-      return `- ${monthLabel}: Thu ${formatCurrency(st.thu)}, Chi ${formatCurrency(st.chi)}, Thặng dư/Dư ${formatCurrency(surplus)}${topCatText}`;
-    }).join("\n");
-
-    const categoryLines =
-      Object.entries(categoryTotals)
-        .sort((a, b) => b[1] - a[1])
-        .map(([cat, amount]) => `- ${cat}: ${formatCurrency(amount)}`)
-        .join("\n") || "- (không có khoản chi nào)";
-
-    let text =
-      `=== BẢNG THỐNG KÊ THU CHI THEO TỪNG THÁNG ===\n` +
-      `${monthlyLines}\n\n` +
-      `=== TỔNG QUAN TẤT CẢ CÁC THÁNG ===\n` +
-      `- Tổng thu nhập toàn bộ: ${formatCurrency(totalIncome)}\n` +
-      `- Tổng chi tiêu toàn bộ: ${formatCurrency(totalExpense)}\n` +
-      `- Số dư tích luỹ: ${formatCurrency(netBalance)}\n` +
-      `- Chi tiêu theo danh mục tổng thể:\n${categoryLines}`;
-
-    if (transactions.length > 0) {
-      text += `\n\n=== DANH SÁCH GIAO DỊCH GẦN ĐÂY ===\n`;
-      transactions.slice(-25).forEach((tx) => {
-        const d = tx.date ? String(tx.date).slice(0, 10) : "";
         text += `- ${d} | ${tx.type === "THU" ? "Thu" : "Chi"} | ${tx.category}: ${formatCurrency(tx.amount)}${tx.description ? ` (${tx.description})` : ""}\n`;
       });
     }
@@ -620,7 +525,7 @@ document.addEventListener("layoutLoaded", () => {
     const trendCanvas = document.getElementById("reportTrendChart");
     const categoryCanvas = document.getElementById("reportCategoryChart");
     if (!trendCanvas && !categoryCanvas) return;
-
+    // Gán tháng hiện tại làm mặc định
     const reportMonth = document.getElementById("report-month");
     if (reportMonth && !reportMonth.value) {
       const now = new Date();
@@ -629,7 +534,7 @@ document.addEventListener("layoutLoaded", () => {
     let barChartInstance = null;
     let doughnutChartInstance = null;
     let allTransactions = [];
-
+    // loc giao dich theo tháng//
     const renderReportsData = () => {
       const selectedMonth = reportMonth?.value;
       let transactions = allTransactions;
@@ -638,7 +543,7 @@ document.addEventListener("layoutLoaded", () => {
           (tx) => tx.date && tx.date.slice(0, 7) === selectedMonth,
         );
       }
-
+      // tinsh thu, chi, chenh lech
       let totalIncome = 0;
       let totalExpense = 0;
       transactions.forEach((tx) => {
@@ -646,7 +551,7 @@ document.addEventListener("layoutLoaded", () => {
         else totalExpense += tx.amount;
       });
       const net = totalIncome - totalExpense;
-
+      // hien thi 
       const incomeEl = document.getElementById("report-total-income");
       const expenseEl = document.getElementById("report-total-expense");
       const netEl = document.getElementById("report-net");
@@ -667,7 +572,7 @@ document.addEventListener("layoutLoaded", () => {
         if (tx.type === "THU") monthlyTotals[key].thu += tx.amount;
         else monthlyTotals[key].chi += tx.amount;
       });
-
+      //danh sachd 6
       let targetMonths = [];
       if (selectedMonth) {
         const [year, month] = selectedMonth.split("-").map(Number);
@@ -679,18 +584,18 @@ document.addEventListener("layoutLoaded", () => {
       } else {
         targetMonths = Object.keys(monthlyTotals).sort().slice(-6);
       }
-
+      //nhanx
       const monthLabels = targetMonths.map((key) => {
         const [year, month] = key.split("-");
         return `T${parseInt(month, 10)}/${year}`;
       });
-
+      // kiem tra co du lieu hay khong
       const hasTrendData = targetMonths.some(
         (k) => (monthlyTotals[k]?.thu || 0) > 0 || (monthlyTotals[k]?.chi || 0) > 0,
       );
-
+      //Ve bieu do cot
       if (trendCanvas && window.Chart) {
-        if (barChartInstance) barChartInstance.destroy();
+        if (barChartInstance) barChartInstance.destroy();// taoj bd moi xoa bd cu
         if (!hasTrendData) {
           trendCanvas.parentElement
             .querySelector(".report-empty-trend")
@@ -733,7 +638,8 @@ document.addEventListener("layoutLoaded", () => {
           });
         }
       }
-
+      // Bieu do tron//
+      //gom chi theo danh muc
       const categoryTotals = {};
       transactions
         .filter((tx) => tx.type === "CHI")
@@ -786,6 +692,7 @@ document.addEventListener("layoutLoaded", () => {
 
       const legendEl = document.getElementById("reportCategoryLegend");
       if (legendEl) {
+        //tinhs tir leej % danh mucj
         const totalForPct =
           categories.reduce((sum, c) => sum + categoryTotals[c], 0) || 1;
         legendEl.innerHTML =
@@ -843,13 +750,18 @@ document.addEventListener("layoutLoaded", () => {
         "AI đang đọc dữ liệu chi tiêu của bạn, vui lòng chờ...";
 
       try {
+        // lấy tháng người chọn
         const reportMonth = document.getElementById("report-month");
         const selectedMonth = reportMonth?.value;
+        // lấy danh sách gd
         const transactions = await apiGetTransactions().catch(() => []);
+        // lọc gd theo tháng
         const filteredTx = selectedMonth
           ? transactions.filter((tx) => tx.date && tx.date.slice(0, 7) === selectedMonth)
           : transactions;
+        // tổng hoipwj sô dư, chi và danh mục
         const summary = buildFinanceSummaryText(filteredTx);
+        // Gửi dl đến be
         const insight = await apiGetAiInsight(summary);
         const cleanInsight = typeof cleanAiResponse === "function" ? cleanAiResponse(insight) : insight;
         if (window.marked) {
@@ -904,17 +816,22 @@ document.addEventListener("layoutLoaded", () => {
     };
 
     const sendMessage = async () => {
-      const question = input.value.trim();
+      const question = input.value.trim();//  // Lấy câu hỏi người dùng
       if (!question) return;
 
       input.value = "";
+
+      // Hiển thị câu hỏi của người dùng
       appendMessage("user", question);
       const thinkingBubble = appendMessage("assistant", "Đang suy nghĩ...");
 
       sendBtn.disabled = true;
       try {
+        //lấy dữ liệu tài chính
         const transactions = await apiGetTransactions().catch(() => []);
-        const summary = buildChatFinanceSummaryText(transactions);
+        //// Tổng hợp dữ liệu
+        const summary = buildFinanceSummaryText(transactions);
+        // Gửi câu hỏi + lịch sử + tóm tắt đến API AI
         const reply = await apiChatWithAi(question, chatHistory, summary);
         const cleanReply = typeof cleanAiResponse === "function" ? cleanAiResponse(reply) : reply;
 
@@ -1537,28 +1454,48 @@ document.addEventListener("layoutLoaded", () => {
         greetingEl.textContent = `Xin chào, ${savedUser.name}`;
       }
     } catch (err) { }
-    // điền tháng mặc định vào ô chọn tháng
+    // ============================================================
+    // B1. DASHBOARD LẤY THÁNG ĐANG XEM
+    // ============================================================
+
+
     let currentSurplusAmount = 0;
+
+    //Lấy ô chọn tháng trên Dashboard.
     const overviewMonthInput = document.getElementById("overview-month");
+
+    // Nếu người dùng chưa chọn tháng thì mặc định lấy tháng hiện tại.
     if (overviewMonthInput && !overviewMonthInput.value) {
       const now = new Date();
       overviewMonthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     }
-    // loadStatsSummary() đọc tháng và yêu cầu lấy số liệu.
+
+    // ============================================================
+    // B2. FRONTEND GỌI API LẤY THỐNG KÊ
+    // ============================================================
     const loadStatsSummary = () => {
       const mVal = overviewMonthInput ? overviewMonthInput.value : null;
       apiGetStatsSummary(mVal)
         .then((s) => {
+          // s là object backend trả về, gồm balance,
+          // periodIncome, periodExpense, periodSavings và monthSurplus.
           const balEl = document.getElementById("stat-balance");
           const incEl = document.getElementById("stat-income");
           const expEl = document.getElementById("stat-expense");
           const savEl = document.getElementById("stat-savings");
+
+          //Đưa số dư lên thẻ "Số dư hiện tại".
           if (balEl)
             balEl.textContent = formatCurrency(s.balance || 0);
+
+          // Đưa tổng thu của kỳ đang xem lên Dashboard.
           if (incEl)
             incEl.textContent = `+${formatCurrency(s.periodIncome || 0)}`;
+          //  Đưa tổng chi của kỳ đang xem lên Dashboard.
           if (expEl)
             expEl.textContent = `-${formatCurrency(s.periodExpense || 0)}`;
+
+          // Đưa tổng tiền hiện có trong các mục tiêu lên Dashboard.
           if (savEl)
             savEl.textContent = formatCurrency(
               (s.periodSavings !== undefined ? s.periodSavings : s.totalSavings) || 0,
@@ -1579,20 +1516,34 @@ document.addEventListener("layoutLoaded", () => {
             }
           }
 
+          // ============================================================
+          // FRONTEND TÍNH SỐ TIỀN ĐƯỢC PHÉP CHUYỂN
+          // ============================================================
+
           const rawSurplus =
             s.monthSurplus !== undefined
               ? s.monthSurplus
               : Math.max(0, (s.periodIncome || 0) - (s.periodExpense || 0));
+
+          // Lấy số dư thật của toàn tài khoản.
+          // Math.max(0, ...) không cho số tiền khả dụng bị âm.
           const availableBalance = Math.max(
             0,
             s.balance !== undefined ? s.balance : rawSurplus,
           );
+
+          // Chỉ cho chuyển số nhỏ hơn giữa:
+          // 1. Tiền dư của tháng đang xem.
+          // 2. Số dư thật còn có trong tài khoản.
           const surplus = Math.min(rawSurplus, availableBalance);
+
+          // Lấy các phần tử giao diện của banner tiền dư.
           const surplusBanner = document.getElementById("surplus-banner");
           const surplusAmountEl = document.getElementById("surplus-amount");
           const surplusLabelEl = document.getElementById("surplus-banner-label");
           if (surplusBanner && surplusAmountEl) {
             if (surplus > 0) {
+              //Có tiền dư thì hiển thị số tiền trên banner.
               surplusAmountEl.textContent = formatCurrency(surplus);
               if (surplusLabelEl) {
                 if (mVal) {
@@ -1604,9 +1555,14 @@ document.addEventListener("layoutLoaded", () => {
                   surplusLabelEl.textContent = "Số dư còn thừa tháng này";
                 }
               }
+
+              //  Hiện banner và nút "Cho vào mục tiết kiệm".
               surplusBanner.classList.remove("hidden");
+
+              // Lưu số tiền tối đa được chuyển để kiểm tra popup.
               currentSurplusAmount = surplus;
             } else {
+              //  Không có tiền dư thì ẩn banner và đặt giới hạn về 0.
               surplusBanner.classList.add("hidden");
               currentSurplusAmount = 0;
             }
@@ -1614,8 +1570,10 @@ document.addEventListener("layoutLoaded", () => {
         })
         .catch((error) => showToast(error.message, "error"));
     };
-    // Tải một lần khi mở trang, rồi tải lại mỗi khi đổi tháng.
+    //  Tải số liệu một lần khi người dùng mở Dashboard.
     loadStatsSummary();
+
+    // Khi đổi tháng thì gọi lại API thống kê cho tháng mới.
     if (overviewMonthInput) {
       overviewMonthInput.addEventListener("change", loadStatsSummary);
     }
@@ -1636,36 +1594,61 @@ document.addEventListener("layoutLoaded", () => {
 
     let currentGoals = [];
 
+    // ============================================================
+    // B5. CHUẨN BỊ HÀM TÍNH TỔNG TIỀN NGƯỜI DÙNG NHẬP
+    // Hàm được khai báo tại đây và sẽ được gọi sau khi popup mở.
+    // ============================================================
     const updateAllocatedTotals = () => {
+      // Tổng số tiền đang được phân bổ cho tất cả mục tiêu.
       let total = 0;
+
+      //  Đánh dấu có mục tiêu nào nhận quá số tiền còn thiếu không.
       let hasOverNeeded = false;
+
+      //  Lấy tất cả ô nhập tiền trong popup.
       const inputs = goalsContainer
         ? goalsContainer.querySelectorAll(".goal-allocation-input")
         : [];
       inputs.forEach((inp) => {
+        // Đọc số tiền trong một ô; ô trống được tính là 0.
         const val = parseFloat(inp.value) || 0;
+
+        // data-max-needed là số tiền mục tiêu này còn thiếu.
         const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
+
+        //  Ghi nhận lỗi nếu người dùng nhập vượt số còn thiếu.
         if (val > maxNeeded) {
           hasOverNeeded = true;
         }
+
+        //  Chỉ cộng giá trị không âm vào tổng phân bổ.
         total += Math.max(0, val);
       });
 
+      // Hiển thị tổng số tiền đã nhập trong popup.
       if (totalAllocatedEl)
         totalAllocatedEl.textContent = formatCurrency(total);
 
+      // Phần chưa phân bổ = số được phép chuyển - tổng đã nhập.
+      // Phần còn lại này chỉ được hiển thị, không được lưu thành bản ghi riêng.
       const remaining = currentSurplusAmount - total;
       if (remainingEl) {
         if (remaining < 0) {
+          // Tổng nhập vượt số dư thì hiển thị số tiền vượt quá.
           remainingEl.textContent = `(Vượt quá: ${formatCurrency(Math.abs(remaining))})`;
           remainingEl.className = "text-rose-600 font-semibold ml-1";
         } else {
+          //  Tổng hợp lệ thì hiển thị số tiền còn chưa phân bổ.
           remainingEl.textContent = `(Còn lại: ${formatCurrency(remaining)})`;
           remainingEl.className = "text-slate-500 ml-1";
         }
       }
 
       if (confirmSurplusBtn) {
+        //  Khoá nút xác nhận nếu:
+        // - Chưa nhập tiền.
+        // - Tổng tiền vượt số dư khả dụng.
+        // - Có mục tiêu nhận quá số tiền còn thiếu.
         confirmSurplusBtn.disabled = total <= 0 || total > currentSurplusAmount || hasOverNeeded;
         if (confirmSurplusBtn.disabled) {
           confirmSurplusBtn.classList.add("opacity-50", "cursor-not-allowed");
@@ -1678,33 +1661,45 @@ document.addEventListener("layoutLoaded", () => {
       }
     };
 
+    // ============================================================
+    // B6. NHẤN "CHO VÀO MỤC TIẾT KIỆM" VÀ MỞ POPUP
+    // ============================================================
     if (transferSurplusBtn) {
       transferSurplusBtn.addEventListener("click", async () => {
         if (availableEl)
           availableEl.textContent = formatCurrency(currentSurplusAmount);
         if (!goalsContainer) return;
-
         goalsContainer.innerHTML =
           '<p class="text-sm text-slate-400 py-3 text-center">Đang tải mục tiêu...</p>';
+
+        // Mở popup phân bổ tiền.
         surplusModal?.open();
 
         try {
+          // Bước 2: Lấy các mục tiêu tiết kiệm
           const goals = await apiGetSavingsGoals();
+
+          // Lấy những mục tiêu chưa hoàn thành
           currentGoals = goals.filter((g) => g.status !== "COMPLETED");
 
           if (!currentGoals.length) {
+            // Không có mục tiêu đang thực hiện thì hiện thông báo.
             goalsContainer.innerHTML =
               '<p class="text-sm text-slate-500 py-4 text-center">Bạn chưa có mục tiêu tiết kiệm nào đang thực hiện.</p>';
             updateAllocatedTotals();
             return;
           }
-
+          // Bước 3: Hiển thị mục tiêu trong popup
           goalsContainer.innerHTML = currentGoals
             .map((g) => {
+              // Số còn thiếu = số tiền mục tiêu - số đã tích luỹ.
               const remainingNeeded = Math.max(
                 0,
                 g.targetAmount - g.currentAmount,
               );
+
+              //  Nếu chỉ có một mục tiêu thì tự điền số nhỏ hơn giữa
+              // số dư khả dụng và số tiền mục tiêu còn thiếu; nhiều mục tiêu để 0.
               const initialVal =
                 currentGoals.length === 1
                   ? Math.min(currentSurplusAmount, remainingNeeded)
@@ -1738,16 +1733,20 @@ document.addEventListener("layoutLoaded", () => {
             })
             .join("");
 
+          // Bước 4: Kiểm tra tiền khi người dùng nhập
           goalsContainer
             .querySelectorAll(".goal-allocation-input")
             .forEach((inp) => {
               inp.addEventListener("input", () => {
+                //  Mỗi khi nhập, kiểm tra số tiền tối đa mục tiêu còn cần.
                 const maxNeeded = parseFloat(inp.dataset.maxNeeded) || 0;
                 let val = parseFloat(inp.value) || 0;
                 if (val > maxNeeded) {
+                  // Nếu nhập quá thì tự đưa về đúng mức tối đa.
                   inp.value = maxNeeded;
                   showToast(`Mục tiêu này chỉ còn thiếu tối đa ${formatCurrency(maxNeeded)}`, "warning");
                 }
+                // Tính lại tổng và phần tiền còn lại sau mỗi lần nhập.
                 updateAllocatedTotals();
               });
             });
@@ -1786,7 +1785,7 @@ document.addEventListener("layoutLoaded", () => {
         }
       });
     }
-
+    // Chia đều tiền cho các mục tiêu
     if (splitEvenBtn) {
       splitEvenBtn.addEventListener("click", () => {
         if (!currentGoals.length || currentSurplusAmount <= 0) return;
@@ -1810,7 +1809,7 @@ document.addEventListener("layoutLoaded", () => {
         updateAllocatedTotals();
       });
     }
-
+    // Xóa toàn bộ số đã nhập
     if (clearSurplusBtn) {
       clearSurplusBtn.addEventListener("click", () => {
         const inputs = goalsContainer
@@ -1821,20 +1820,27 @@ document.addEventListener("layoutLoaded", () => {
       });
     }
 
+    // ============================================================
+    // B7. NHẤN "XÁC NHẬN CHUYỂN"
+    // ============================================================
     if (confirmSurplusBtn) {
       confirmSurplusBtn.addEventListener("click", async () => {
+        //  Lấy tất cả ô nhập tiền trong popup.
         const inputs = goalsContainer
           ? goalsContainer.querySelectorAll(".goal-allocation-input")
           : [];
         const allocations = [];
         inputs.forEach((inp) => {
+          //  Chuyển nội dung ô nhập thành số; ô trống được tính là 0.
           const amt = parseFloat(inp.value) || 0;
           if (amt > 0) {
+            // goalId xác định mục tiêu, amount là số tiền muốn chuyển.
             allocations.push({ goalId: inp.dataset.goalId, amount: amt });
           }
         });
 
         if (!allocations.length) {
+          // Chưa nhập tiền cho bất kỳ mục tiêu nào thì dừng.
           showToast(
             "Vui lòng phân bổ số tiền lớn hơn 0 cho ít nhất một mục tiêu",
             "error",
@@ -1842,11 +1848,13 @@ document.addEventListener("layoutLoaded", () => {
           return;
         }
 
+        //  Cộng số tiền của tất cả mục tiêu để có tổng phân bổ.
         const totalAllocated = allocations.reduce(
           (sum, a) => sum + a.amount,
           0,
         );
         if (totalAllocated > currentSurplusAmount) {
+          //  Không cho tổng phân bổ vượt số dư khả dụng.
           showToast(
             "Tổng số tiền phân bổ không được vượt quá số dư khả dụng",
             "error",
@@ -1854,6 +1862,7 @@ document.addEventListener("layoutLoaded", () => {
           return;
         }
 
+        //  Kiểm tra riêng từng mục tiêu để không vượt số còn thiếu.
         for (const a of allocations) {
           const goal = currentGoals.find((g) => g.id === a.goalId);
           const needed = goal ? Math.max(0, goal.targetAmount - goal.currentAmount) : 0;
@@ -1866,10 +1875,12 @@ document.addEventListener("layoutLoaded", () => {
           }
         }
 
+        //  Khoá nút để tránh nhấn hai lần và gửi trùng request.
         confirmSurplusBtn.disabled = true;
         confirmSurplusBtn.innerText = "Đang chuyển...";
 
         try {
+          // Lấy tháng đang xem để ghi giao dịch vào đúng kỳ.
           const mVal = overviewMonthInput ? overviewMonthInput.value : null;
           let transferDate = null;
           if (mVal) {
@@ -1877,24 +1888,39 @@ document.addEventListener("layoutLoaded", () => {
             const now = new Date();
             const currentM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
             if (mVal === currentM) {
+              // Tháng hiện tại thì dùng đúng thời điểm đang chuyển.
               transferDate = now.toISOString();
             } else {
+              //  Tháng cũ thì dùng ngày cuối tháng đó.
               const lastDay = new Date(parseInt(y, 10), parseInt(m, 10), 0, 12, 0, 0);
               transferDate = lastDay.toISOString();
             }
           }
 
+          // ============================================================
+          // B8. GỬI REQUEST ĐÓNG GÓP CHO TỪNG MỤC TIÊU
+          // ============================================================
           for (const a of allocations) {
+            // Chờ mục tiêu hiện tại xử lý xong rồi mới gửi mục tiêu sau.
             await apiDepositToGoal(a.goalId, a.amount, transferDate);
           }
+
+          // ============================================================
+          // B10. BACKEND THÀNH CÔNG, FRONTEND TẢI LẠI DASHBOARD
+          // ============================================================
           showToast("Đã phân bổ số dư vào các mục tiêu tiết kiệm thành công!");
+
+          // Giải thích: Đóng popup.
           surplusModal?.close();
+
+          // Tính lại số dư và tiền dư sau khi có giao dịch CHI mới.
           loadStatsSummary();
           renderTransactions();
           refreshNotifications();
         } catch (err) {
           showToast(err.message, "error");
         } finally {
+          // Giải thích: Dù thành công hay lỗi cũng mở lại nút xác nhận.
           confirmSurplusBtn.disabled = false;
           confirmSurplusBtn.innerText = "Xác nhận chuyển";
         }
@@ -1910,7 +1936,7 @@ document.addEventListener("layoutLoaded", () => {
       try {
         let labels, thuData, chiData;
 
-        // Specific date range
+        // GOI API
         const rows = await apiGetDailyTrend(30, startDate, endDate);
         labels = rows.map(
           (r) => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}`,
@@ -1961,10 +1987,10 @@ document.addEventListener("layoutLoaded", () => {
         showToast(error.message, "error");
       }
     };
-
+    // Khi chọn lại ngày, biểu đồ tự tính lại
     const startDateInput = document.getElementById("trend-start-date");
     const endDateInput = document.getElementById("trend-end-date");
-
+    // KHI MỞ Khoảng ngày mặc định
     if (startDateInput && endDateInput) {
       const now = new Date();
       const past30Days = new Date();
@@ -1996,7 +2022,7 @@ document.addEventListener("layoutLoaded", () => {
         drawLineChart(startDateInput.value, endDateInput.value);
       }
     }
-
+    // BIỂU ĐỒ TRÒN
     const donutCanvas = document.getElementById("donutChart");
     let donutChartInstance = null;
     const drawDonutChart = (start = null, end = null) => {
@@ -2204,7 +2230,7 @@ document.addEventListener("layoutLoaded", () => {
       });
     }
 
-    // 33333.sau khi tạo ns done//
+    //Khi người dùng đổi tháng, gọi lại API với tháng mới.
     const renderBudgets = async (options) => {
       try {
         allBudgets = await apiGetBudgets(options);
@@ -2214,7 +2240,7 @@ document.addEventListener("layoutLoaded", () => {
         showToast(error.message, "error");
       }
     };
-    //lọc tháng
+    //chọn tháng
     if (budgetMonth) {
       const now = new Date();
       budgetMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -2358,13 +2384,13 @@ document.addEventListener("layoutLoaded", () => {
       const deadlineEnd = document.getElementById("savings-deadline-end");
 
       let items = allSavingsGoals;
-
+      // Lọc theo kỳ hạn
       if (termSelect && termSelect.value) {
         items = items.filter(
           (g) => (g.termType || "SHORT_TERM") === termSelect.value,
         );
       }
-
+      // lọc theo tháng
       if (monthFilter && monthFilter.value) {
         const selectedMonth = monthFilter.value;
         items = items.filter((g) => {
@@ -2377,11 +2403,11 @@ document.addEventListener("layoutLoaded", () => {
           return true;
         });
       }
-
+      // Lọc theo trạng thái
       if (statusSelect && statusSelect.value) {
         items = items.filter((g) => g.status === statusSelect.value);
       }
-
+      // lọc theo ngày
       if (
         deadlineStart?.value &&
         deadlineEnd?.value &&
@@ -2523,7 +2549,7 @@ document.addEventListener("layoutLoaded", () => {
         }
         goalModal?.open();
       });
-
+    // ẤN LƯU MỤC TIÊU
     document
       .getElementById("save-goal-btn")
       ?.addEventListener("click", async () => {
@@ -3137,7 +3163,9 @@ document.addEventListener("layoutLoaded", () => {
 
     if (monthInput) {
       const now = new Date();
+      // mới mở mặc định chọn tháng hiện tại
       monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      // đổi tháng load lại danh sách
       monthInput.addEventListener("change", () => {
         loadData({ month: monthInput.value });
       });
@@ -3145,10 +3173,11 @@ document.addEventListener("layoutLoaded", () => {
 
     // tính tổng tiền theo danh mục//
     const renderList = (items) => {
+      // Cộng amount của các phần tử đang được hiển thị
       let total = items.reduce((sum, i) => sum + i.amount, 0);
       const totalEl = document.getElementById("fixed-expense-total");
       if (totalEl) totalEl.textContent = formatCurrency(total);
-
+      // Hiển thị danh sách
       listEl.innerHTML =
         items.map(renderCard).join("") ||
         '<p class="col-span-full card p-8 text-center text-slate-500 text-sm">Chưa có khoản chi cố định nào cho tháng này.</p>';
@@ -3207,8 +3236,9 @@ document.addEventListener("layoutLoaded", () => {
         }
       });
     }
-
+    // đổi danh mục
     if (categorySelect) categorySelect.addEventListener("change", applyFilter);
+    // xóa bộ lọc
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
         if (categorySelect) categorySelect.value = "";

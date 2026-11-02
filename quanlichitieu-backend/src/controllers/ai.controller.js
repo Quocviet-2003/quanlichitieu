@@ -16,6 +16,7 @@ function buildSystemPrompt(summary) {
   );
 }
 
+// Xây dựng system prompt cho chat
 function buildChatSystemPrompt(summary) {
   return (
     "Bạn là trợ lý tài chính cá nhân thông minh của ứng dụng ChiLotus, luôn trả lời ngắn gọn, chính xác, đi thẳng vào trọng tâm bằng tiếng Việt.\n" +
@@ -121,10 +122,12 @@ function generateLocalChatReply(message, summary, transactions = []) {
   return "Bạn chưa có dữ liệu giao dịch thu chi nào để phân tích.";
 }
 
+// kiểm tra hạn mức ai
 async function checkQuota(userId) {
   const quota = parseInt((await getSetting("ai_daily_quota")) || "50", 10);
   if (!Number.isFinite(quota) || quota <= 0) return;
 
+  // đếm nhật ký sử dụng
   const used = await prisma.aiLog.count({
     where: {
       userId,
@@ -158,10 +161,12 @@ async function logUsage(userId, endpoint, result) {
   }
 }
 
+// POST /api/ai-insights
 exports.getInsights = asyncHandler(async (req, res) => {
   requireFields(req.body, ["summary"]);
   await checkQuota(req.userId);
 
+  // tạo mess gửi Ollama
   const messages = [
     { role: "system", content: buildSystemPrompt(String(req.body.summary)) },
     {
@@ -177,6 +182,7 @@ exports.getInsights = asyncHandler(async (req, res) => {
   res.json({ insight: result.content });
 });
 
+// POST /api/ai-chat
 exports.chat = asyncHandler(async (req, res) => {
   requireFields(req.body, ["message"]);
   assert(
@@ -184,8 +190,11 @@ exports.chat = asyncHandler(async (req, res) => {
     400,
     "Câu hỏi không được để trống.",
   );
+
+  // Kiểm tra số lượt dùng AI trong ngày
   await checkQuota(req.userId);
 
+  // bổ sung dữ liệu từ database vào summary
   let summary = String(req.body.summary || "").trim();
   let userTx = [];
   try {
@@ -217,8 +226,10 @@ exports.chat = asyncHandler(async (req, res) => {
   } catch (err) {
   }
 
+  // Chỉ giữ tối đa 10 lượt hội thoại gần nhất
   const history = Array.isArray(req.body.history)
     ? req.body.history
+      // Chỉ nhận tin nhắn user hoặc assistant hợp lệ
       .filter(
         (m) =>
           m &&
@@ -228,6 +239,7 @@ exports.chat = asyncHandler(async (req, res) => {
       .slice(-10)
     : [];
 
+  // tạo messages gửi Ollama
   const messages = [
     {
       role: "system",
@@ -237,9 +249,10 @@ exports.chat = asyncHandler(async (req, res) => {
     { role: "user", content: String(req.body.message) },
   ];
 
+  // Gọi AI và xử lý lỗi
   try {
     const result = await callOllama(messages);
-    await logUsage(req.userId, "Trò chuyện AI", result);
+    await logUsage(req.userId, "Trò chuyện AI", result); // Ghi người dùng, model và số token vào database
     return res.json({ reply: result.content });
   } catch (err) {
     const fallback = generateLocalChatReply(req.body.message, summary, userTx);

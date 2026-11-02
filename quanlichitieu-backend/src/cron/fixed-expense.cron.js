@@ -3,7 +3,6 @@ const prisma = require('../config/db');
 
 // Hàm này chỉ ĐĂNG KÝ lịch chạy; server.js sẽ gọi nó một lần khi backend khởi động.
 const scheduleFixedExpenses = () => {
-  // Cú pháp "phút giờ ngày tháng thứ": '1 0 * * *' = 00:01 mỗi ngày.
   cron.schedule('1 0 * * *', async () => {
     console.log('[Cron] Đang quét các khoản chi cố định tới hạn...');
     try {
@@ -19,8 +18,7 @@ const scheduleFixedExpenses = () => {
       // Lấy tất cả lịch của mọi user vì cron là tác vụ nền toàn hệ thống.
       const fixedExpenses = await prisma.fixedExpense.findMany();
 
-      // Xử lý lần lượt từng lịch. Sau một giao dịch thành công, lần lặp tiếp theo
-      // sẽ tính lại tổng CHI nên số dư luôn bao gồm khoản vừa thanh toán.
+      // kiểm tra đúng ngày đến hạn
       for (const expense of fixedExpenses) {
         // Logic xác định ngày trừ tiền:
         // Nếu deductDay lớn hơn số ngày trong tháng (vd: 31, nhưng tháng chỉ có 30 ngày)
@@ -39,8 +37,7 @@ const scheduleFixedExpenses = () => {
 
           // Nếu đã thanh toán trong tháng/năm hiện tại thì bỏ qua toàn bộ khối này.
           if (!alreadyDeducted) {
-            // Số dư của ứng dụng được tính từ lịch sử giao dịch, không dùng ví nạp tiền:
-            // số dư hiện tại = tổng THU - tổng CHI.
+            // Tính tổng thu và chi để tính số dư 
             const [incomeAgg, expenseAgg] = await Promise.all([
               prisma.transaction.aggregate({
                 _sum: { amount: true },

@@ -28,18 +28,18 @@ async function callOllama(messages) {
       "Chưa cấu hình khóa kết nối AI trên máy chủ.",
     );
   }
-
+  // chọn model
   const model = await resolveModel();
 
   let data;
   try {
+    // Gửi yêu cầu sang Ollama Cloud
     const response = await fetch(OLLAMA_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      // Nhận toàn bộ câu trả lời một lần.
       body: JSON.stringify({
         model,
         messages,
@@ -58,6 +58,7 @@ async function callOllama(messages) {
         `Dịch vụ AI trả về lỗi (${response.status}). ${detail.slice(0, 200)}`,
       );
     }
+    // Đọc JSON do Ollama Cloud trả về
     data = await response.json();
   } catch (err) {
     if (err instanceof ApiError) throw err;
@@ -70,7 +71,8 @@ async function callOllama(messages) {
   const completionTokens = data.eval_count || 0;
   const content = (data.message?.content || "").trim();
 
-  // Trả nội dung và token để controller xử lý.
+
+  // Trả kết quả về cho ai.controller.js
   return {
     model,
     content: content || "AI không trả về nội dung nào.",

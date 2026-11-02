@@ -29,9 +29,12 @@ async function apiGetAiInsight(summary) {
   let res;
   try {
     const headers = { 'Content-Type': 'application/json' };
+    // Lấy JWT đã lưu khi đăng nhập.
     if (typeof getToken === 'function' && getToken()) {
+      // Gắn JWT vào request để backend xác định user.
       headers['Authorization'] = `Bearer ${getToken()}`;
     }
+    // Gửi summary lên endpoint /api/ai-insights
     res = await fetch('/api/ai-insights', {
       method: 'POST',
       headers,
@@ -41,7 +44,7 @@ async function apiGetAiInsight(summary) {
     throw new Error('Không gọi được API. Hãy chạy app bằng lệnh "npm run dev" trong thư mục quanlichitieu-backend.');
   }
 
-  // Đọc kết quả JSON, báo lỗi nếu yêu cầu thất bại.
+  // Đọc kết quả JSON trả về, báo lỗi nếu yêu cầu thất bại.
   let data;
   try {
     data = await res.json();
@@ -50,7 +53,7 @@ async function apiGetAiInsight(summary) {
   }
 
   if (!res.ok) throw new Error(data.error || 'Lỗi phân tích AI');
-  return cleanAiResponse(data.insight);
+  return cleanAiResponse(data.insight);// trả về main
 }
 
 async function apiChatWithAi(message, history, summary) {
