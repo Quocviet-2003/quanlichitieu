@@ -156,13 +156,30 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
   res.json(updated); // tra giao dich moi//
 });
 
-// Nút Xóa gửi DELETE: xóa giao dịch theo id và userId, không sửa mục tiêu tiết kiệm.
 exports.deleteTransaction = asyncHandler(async (req, res) => {
   const id = req.params.id;
-  const deleted = isValidObjectId(id)
-    ? await prisma.transaction.deleteMany({ where: { id, userId: req.userId } }) // Chỉ cho xoá giao dịch của chính mình
-    : { count: 0 };
-  assert(deleted.count > 0, 404, 'Không tìm thấy giao dịch.');
+  const tx = isValidObjectId(id)
+    ? await prisma.transaction.findFirst({ where: { id, userId: req.userId } })
+    : null;
+  assert(tx, 404, 'Không tìm thấy giao dịch.');
 
+  if (tx.type === 'CHI' && tx.description && tx.description.startsWith('Tiết kiệm: ')) {
+    const goalName = tx.description.replace('Tiết kiệm: ', '').trim();
+    const goal = await prisma.savingsGoal.findFirst({
+      where: { userId: req.userId, name: goalName }
+    });
+    if (goal) {
+      const newAmount = Math.max(0, goal.currentAmount - tx.amount);
+      await prisma.savingsGoal.update({
+        where: { id: goal.id },
+        data: {
+          currentAmount: newAmount,
+          status: newAmount >= goal.targetAmount ? 'COMPLETED' : 'IN_PROGRESS'
+        }
+      });
+    }
+  }
+
+  await prisma.transaction.delete({ where: { id } });
   res.json({ message: 'Đã xóa giao dịch.' });
 });
