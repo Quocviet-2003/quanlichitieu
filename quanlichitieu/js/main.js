@@ -207,6 +207,25 @@ document.addEventListener("layoutLoaded", () => {
       const amountClass =
         tx.type === "THU" ? "amount-positive" : "amount-negative";
 
+      const isSavingsTx = tx.description && tx.description.startsWith("Tiết kiệm:");
+      const desktopActions = isSavingsTx
+        ? `<span class="text-xs text-slate-400 italic">Giao dịch hệ thống</span>`
+        : `
+            <button onclick="window.openEditTxModal('${tx.id}')" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mr-3">
+              Sửa
+            </button>
+            <button onclick="window.deleteTx('${tx.id}')" class="text-sm font-medium text-rose-600 hover:text-rose-800 transition-colors">
+              Xóa
+            </button>
+          `;
+
+      const mobileActions = isSavingsTx
+        ? `<span class="text-xs text-slate-400 italic">Hệ thống</span>`
+        : `
+            <button onclick="window.openEditTxModal('${tx.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Sửa</button>
+            <button onclick="window.deleteTx('${tx.id}')" class="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors">Xóa</button>
+          `;
+
       desktopHtml += `
         <tr class="hover:bg-slate-50 transition-colors group">
           <td class="px-5 py-3">
@@ -221,12 +240,7 @@ document.addEventListener("layoutLoaded", () => {
           <td class="px-5 py-3 text-sm text-slate-500">${formatDate(tx.date)}</td>
           <td class="px-5 py-3 text-sm text-right ${amountClass}">${amountStr}</td>
           <td class="px-5 py-3 text-right">
-            <button onclick="window.openEditTxModal('${tx.id}')" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mr-3">
-              Sửa
-            </button>
-            <button onclick="window.deleteTx('${tx.id}')" class="text-sm font-medium text-rose-600 hover:text-rose-800 transition-colors">
-              Xóa
-            </button>
+            ${desktopActions}
           </td>
         </tr>
       `;
@@ -245,8 +259,7 @@ document.addEventListener("layoutLoaded", () => {
           <div class="flex flex-col items-end gap-1">
             <div class="text-sm font-medium whitespace-nowrap ${amountClass}">${amountStr}</div>
             <div class="flex gap-2">
-              <button onclick="window.openEditTxModal('${tx.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Sửa</button>
-              <button onclick="window.deleteTx('${tx.id}')" class="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors">Xóa</button>
+              ${mobileActions}
             </div>
           </div>
         </div>

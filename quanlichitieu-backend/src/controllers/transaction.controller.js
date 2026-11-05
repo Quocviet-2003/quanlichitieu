@@ -143,7 +143,11 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
     ? await prisma.transaction.findFirst({ where: { id, userId: req.userId } })
     : null;
   assert(existing, 404, 'Không tìm thấy giao dịch.');
-  // kiểm tra du lieu //
+
+  if (existing.type === 'CHI' && existing.description && existing.description.startsWith('Tiết kiệm:')) {
+    assert(false, 400, 'Giao dịch trích tiền tiết kiệm do hệ thống quản lý, không thể chỉnh sửa.');
+  }
+
   const data = parseTxFields(req.body, { partial: true });
   const coords = parseCoords(req.body);
   assert(Object.keys(data).length > 0 || Object.keys(coords).length > 0, 400, 'Không có dữ liệu nào để cập nhật.');
@@ -156,13 +160,17 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
   res.json(updated); // tra giao dich moi//
 });
 
-// Nút Xóa gửi DELETE: xóa giao dịch theo id và userId, không sửa mục tiêu tiết kiệm.
 exports.deleteTransaction = asyncHandler(async (req, res) => {
   const id = req.params.id;
-  const deleted = isValidObjectId(id)
-    ? await prisma.transaction.deleteMany({ where: { id, userId: req.userId } }) // Chỉ cho xoá giao dịch của chính mình
-    : { count: 0 };
-  assert(deleted.count > 0, 404, 'Không tìm thấy giao dịch.');
+  const tx = isValidObjectId(id)
+    ? await prisma.transaction.findFirst({ where: { id, userId: req.userId } })
+    : null;
+  assert(tx, 404, 'Không tìm thấy giao dịch.');
 
+  if (tx.type === 'CHI' && tx.description && tx.description.startsWith('Tiết kiệm:')) {
+    assert(false, 400, 'Giao dịch trích tiền tiết kiệm do hệ thống quản lý, không thể xóa.');
+  }
+
+  await prisma.transaction.delete({ where: { id } });
   res.json({ message: 'Đã xóa giao dịch.' });
 });
