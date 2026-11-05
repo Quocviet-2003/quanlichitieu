@@ -800,10 +800,10 @@ async function req(method, pathUrl, { token, body } = {}) {
       eq(status, 400, 'HTTP status 400 khi nạp amount <= 0');
     });
 
-    await runTest('SAV-15', 'Rollback: Xóa giao dịch nạp tiết kiệm tự động hoàn trừ tiền trong mục tiêu tiết kiệm', async () => {
+    await runTest('SAV-15', 'Bảo vệ giao dịch hệ thống: Chặn sửa/xóa giao dịch trích tiền tiết kiệm trả về 400', async () => {
       const gRes = await req('POST', '/api/savings', {
         token: userToken,
-        body: { name: 'Mục tiêu Rollback Test', targetAmount: 5000000, deadline: '2026-12-31' },
+        body: { name: 'Mục tiêu Test Bảo Vệ', targetAmount: 5000000, deadline: '2026-12-31' },
       });
       eq(gRes.status, 201, 'Tạo mục tiêu thành công');
       const gId = gRes.data.id;
@@ -813,19 +813,24 @@ async function req(method, pathUrl, { token, body } = {}) {
         body: { amount: 1000000 },
       });
       eq(depRes.status, 200, 'Nạp tiền thành công');
-      eq(depRes.data.goal.currentAmount, 1000000, 'currentAmount = 1M');
 
       const txsRes = await req('GET', '/api/transactions', { token: userToken });
-      const savTx = txsRes.data.find((t) => t.description && t.description.includes('Mục tiêu Rollback Test'));
+      const savTx = txsRes.data.find((t) => t.description && t.description.includes('Mục tiêu Test Bảo Vệ'));
       ok(savTx, 'Tìm thấy giao dịch chi tiết kiệm');
 
+      const editRes = await req('PUT', `/api/transactions/${savTx.id}`, {
+        token: userToken,
+        body: { amount: 500000 },
+      });
+      eq(editRes.status, 400, 'Chặn sửa giao dịch tiết kiệm trả về 400');
+
       const delRes = await req('DELETE', `/api/transactions/${savTx.id}`, { token: userToken });
-      eq(delRes.status, 200, 'Xóa giao dịch thành công');
+      eq(delRes.status, 400, 'Chặn xóa giao dịch tiết kiệm trả về 400');
 
       const checkRes = await req('GET', '/api/savings', { token: userToken });
       const gUpdated = checkRes.data.find((g) => g.id === gId);
       ok(gUpdated, 'Tìm thấy mục tiêu');
-      eq(gUpdated.currentAmount, 0, 'Tiền tiết kiệm đã được trừ ngược lại về 0');
+      eq(gUpdated.currentAmount, 1000000, 'Tiền tiết kiệm vẫn được giữ nguyên vẹn 1M');
 
       await req('DELETE', `/api/savings/${gId}`, { token: userToken });
     });

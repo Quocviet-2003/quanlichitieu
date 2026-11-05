@@ -143,7 +143,11 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
     ? await prisma.transaction.findFirst({ where: { id, userId: req.userId } })
     : null;
   assert(existing, 404, 'Không tìm thấy giao dịch.');
-  // kiểm tra du lieu //
+
+  if (existing.type === 'CHI' && existing.description && existing.description.startsWith('Tiết kiệm:')) {
+    assert(false, 400, 'Giao dịch trích tiền tiết kiệm do hệ thống quản lý, không thể chỉnh sửa.');
+  }
+
   const data = parseTxFields(req.body, { partial: true });
   const coords = parseCoords(req.body);
   assert(Object.keys(data).length > 0 || Object.keys(coords).length > 0, 400, 'Không có dữ liệu nào để cập nhật.');
@@ -163,21 +167,8 @@ exports.deleteTransaction = asyncHandler(async (req, res) => {
     : null;
   assert(tx, 404, 'Không tìm thấy giao dịch.');
 
-  if (tx.type === 'CHI' && tx.description && tx.description.startsWith('Tiết kiệm: ')) {
-    const goalName = tx.description.replace('Tiết kiệm: ', '').trim();
-    const goal = await prisma.savingsGoal.findFirst({
-      where: { userId: req.userId, name: goalName }
-    });
-    if (goal) {
-      const newAmount = Math.max(0, goal.currentAmount - tx.amount);
-      await prisma.savingsGoal.update({
-        where: { id: goal.id },
-        data: {
-          currentAmount: newAmount,
-          status: newAmount >= goal.targetAmount ? 'COMPLETED' : 'IN_PROGRESS'
-        }
-      });
-    }
+  if (tx.type === 'CHI' && tx.description && tx.description.startsWith('Tiết kiệm:')) {
+    assert(false, 400, 'Giao dịch trích tiền tiết kiệm do hệ thống quản lý, không thể xóa.');
   }
 
   await prisma.transaction.delete({ where: { id } });
