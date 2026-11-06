@@ -2,7 +2,7 @@
    ChiLotus — style nền chung
    Cảm hứng: sổ chi tiêu giấy — nền giấy ấm, mực đậm, chấm li ti
    ============================================================ */
-
+/* nền back*/
 body {
     background-color: #f6f1e5;
     /* Hoạ tiết chấm nhỏ như giấy vở */
@@ -20,6 +20,7 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
     display: none;
 }
+
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -27,8 +28,15 @@ body {
 
 /* Animations */
 @keyframes slideInRight {
-    from { transform: translateX(100%); opacity: 0; }
-    to   { transform: translateX(0); opacity: 1; }
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .toast-enter {

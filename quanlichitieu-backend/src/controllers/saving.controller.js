@@ -195,7 +195,7 @@ exports.depositToGoal = asyncHandler(async (req, res) => {
   // Giải thích: Chuyển amount nhận từ JSON sang kiểu Number.
   const amount = toNumber(req.body.amount);
 
-  // Giải thích: Chặn dữ liệu không phải số, số 0 và số âm.
+  //  Chặn dữ liệu không phải số, số 0 và số âm.
   assert(
     Number.isFinite(amount) && amount > 0,
     400,

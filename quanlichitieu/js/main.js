@@ -572,7 +572,7 @@ document.addEventListener("layoutLoaded", () => {
       if (expenseEl) expenseEl.textContent = formatCurrency(totalExpense);
       if (netEl) {
         netEl.textContent = formatCurrency(net);
-        netEl.classList.toggle("text-emerald-600", net >= 0);
+        netEl.classList.toggle("text-emerald-600", net >= 0); // màu số dư
         netEl.classList.toggle("text-rose-600", net < 0);
       }
 
@@ -893,7 +893,7 @@ document.addEventListener("layoutLoaded", () => {
       try {
         const uid = getCurrentUser()?.id || "guest";
         localStorage.setItem(`read_notifs_${uid}`, JSON.stringify([...new Set(keys)]));
-      } catch {}
+      } catch { }
     };
 
     const buildRow = (icon, colorClass, title, desc, isRead = false) => `
@@ -2337,6 +2337,7 @@ document.addEventListener("layoutLoaded", () => {
       const dt = new Date(d);
       return `${dt.getDate().toString().padStart(2, "0")}/${(dt.getMonth() + 1).toString().padStart(2, "0")}/${dt.getFullYear()}`;
     };
+    // màu thanh tiet kiệm
     const pctTextClass = (p) =>
       p >= 100
         ? "text-emerald-600"
